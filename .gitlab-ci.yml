@@ -42,7 +42,7 @@ docs:
 snitch-cluster-sw:
   script:
     - cd target/snitch_cluster
-    - make sw
+    - make sw -j
   artifacts:
     paths:
       - sw/math/include/bits/alltypes.h
@@ -52,7 +52,7 @@ snitch-cluster-sw:
 snitch-cluster-sw-banshee:
   script:
     - cd target/snitch_cluster
-    - make SELECT_RUNTIME=banshee sw
+    - make SELECT_RUNTIME=banshee sw -j
   artifacts:
     paths:
       - sw/math/include/bits/alltypes.h
@@ -95,7 +95,7 @@ snitch-cluster-vlt:
   needs: [snitch-cluster-sw]
   script:
     - cd target/snitch_cluster
-    - make bin/snitch_cluster.vlt
+    - make bin/snitch_cluster.vlt -j
     - ./run.py sw/run.yaml --simulator verilator -j --run-dir runs/vlt
 
 # VCS
@@ -103,7 +103,7 @@ snitch-cluster-vcs:
   needs: [snitch-cluster-sw]
   script:
     - cd target/snitch_cluster
-    - make bin/snitch_cluster.vcs
+    - make bin/snitch_cluster.vcs -j
     - ./run.py sw/run.yaml --simulator vcs -j --run-dir runs/vcs
 
 # Questa
@@ -111,7 +111,7 @@ snitch-cluster-vsim:
   needs: [snitch-cluster-sw]
   script:
     - cd target/snitch_cluster
-    - make bin/snitch_cluster.vsim
+    - make bin/snitch_cluster.vsim -j
     - ./run.py sw/run.yaml --simulator vsim -j --run-dir runs/vsim
 
 # Banshee

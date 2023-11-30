@@ -37,10 +37,10 @@ jobs:
       - name: Build Software
         run: |
           bender vendor init
-          make -C target/snitch_cluster sw
+          make -C target/snitch_cluster sw -j
       - name: Build Hardware
         run: |
-          make -C target/snitch_cluster bin/snitch_cluster.vlt
+          make -C target/snitch_cluster bin/snitch_cluster.vlt -j
       - name: Run Tests
         working-directory: target/snitch_cluster
         run: |
@@ -62,7 +62,7 @@ jobs:
       - name: Build Software
         run: |
           bender vendor init
-          make -C target/snitch_cluster SELECT_RUNTIME=banshee sw
+          make -C target/snitch_cluster SELECT_RUNTIME=banshee sw -j
       - name: Run Tests
         env:
           SNITCH_LOG: info
