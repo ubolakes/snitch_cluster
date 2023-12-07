@@ -17,6 +17,8 @@ module snitch_cc #(
   parameter int unsigned DataWidth          = 0,
   /// Data width of the AXI DMA buses.
   parameter int unsigned DMADataWidth       = 0,
+  /// User width of the AXI DMA buses.
+  parameter int unsigned DMAUserWidth       = 0,
   /// Id width of the AXI DMA bus.
   parameter int unsigned DMAIdWidth         = 0,
   parameter int unsigned DMAAxiReqFifoDepth = 0,
@@ -378,6 +380,7 @@ module snitch_cc #(
     axi_dma_tc_snitch_fe #(
       .AddrWidth (AddrWidth),
       .DataWidth (DataWidth),
+      .UserWidth (DMAUserWidth),
       .DMADataWidth (DMADataWidth),
       .IdWidth (DMAIdWidth),
       .DMAAxiReqFifoDepth (DMAAxiReqFifoDepth),

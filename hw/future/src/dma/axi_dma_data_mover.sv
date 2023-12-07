@@ -321,6 +321,7 @@ module axi_dma_data_mover #(
     // AW signals
     axi_dma_req_o.aw.id    = current_aw_req.id;
     axi_dma_req_o.aw.addr  = current_aw_req.addr;
+    axi_dma_req_o.aw.user  = current_aw_req.user;
     axi_dma_req_o.aw.len   = current_aw_req.len;
     axi_dma_req_o.aw.size  = current_aw_req.size;
     axi_dma_req_o.aw.burst = current_aw_req.burst;

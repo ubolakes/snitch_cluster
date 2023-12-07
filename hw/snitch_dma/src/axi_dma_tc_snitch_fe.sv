@@ -12,6 +12,7 @@
 module axi_dma_tc_snitch_fe #(
     parameter int unsigned AddrWidth     = 0,
     parameter int unsigned DataWidth     = 0,
+    parameter int unsigned UserWidth     = 0,
     parameter int unsigned DMADataWidth  = 0,
     parameter int unsigned IdWidth       = 0,
     parameter int unsigned DMAAxiReqFifoDepth = 3,
@@ -22,7 +23,8 @@ module axi_dma_tc_snitch_fe #(
     parameter type         dma_events_t  = logic,
     /// Derived parameter *Do not override*
     parameter type addr_t = logic [AddrWidth-1:0],
-    parameter type data_t = logic [DataWidth-1:0]
+    parameter type data_t = logic [DataWidth-1:0],
+    parameter type user_t = logic [UserWidth-1:0]
 ) (
     input  logic           clk_i,
     input  logic           rst_ni,
@@ -60,6 +62,7 @@ module axi_dma_tc_snitch_fe #(
     typedef struct packed {
         id_t              id;
         addr_t            src, dst, num_bytes;
+        user_t            user_src, user_dst;
         axi_pkg::cache_t  cache_src, cache_dst;
         axi_pkg::burst_t  burst_src, burst_dst;
         logic             decouple_rw;
@@ -70,6 +73,7 @@ module axi_dma_tc_snitch_fe #(
     typedef struct packed {
         id_t              id;
         addr_t            src, dst, num_bytes;
+        user_t            user_src, user_dst;
         axi_pkg::cache_t  cache_src, cache_dst;
         addr_t            stride_src, stride_dst, num_repetitions;
         axi_pkg::burst_t  burst_src, burst_dst;
@@ -90,6 +94,7 @@ module axi_dma_tc_snitch_fe #(
     axi_dma_backend #(
         .DataWidth       ( DMADataWidth ),
         .AddrWidth       ( AddrWidth ),
+        .UserWidth       ( UserWidth ),
         .IdWidth         ( IdWidth ),
         .AxReqFifoDepth  ( DMAAxiReqFifoDepth ),
         .TransFifoDepth  ( DMAReqFifoDepth ),
@@ -348,6 +353,14 @@ module axi_dma_tc_snitch_fe #(
                   acc_qready_o = 1'b1;
                   is_dma_op    = 1'b1;
                   dma_op_name  = "DMREP";
+              end
+
+              // write the multicast mask in the destination user signal
+              riscv_instr::DMMCAST : begin
+                  twod_req_d.user_dst = acc_qdata_arga_i;
+                  acc_qready_o = 1'b1;
+                  is_dma_op    = 1'b1;
+                  dma_op_name  = "DMMCAST";
               end
 
               default:;

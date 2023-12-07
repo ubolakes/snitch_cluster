@@ -16,6 +16,8 @@ module axi_dma_backend #(
     parameter int unsigned DataWidth      = -1,
     /// Address width of the AXI bus
     parameter int unsigned AddrWidth      = -1,
+    /// User width of the AXI bus
+    parameter int unsigned UserWidth      = -1,
     /// ID width of the AXI bus
     parameter int unsigned IdWidth        = -1,
     /// Number of AX beats that can be in-flight
@@ -81,12 +83,15 @@ module axi_dma_backend #(
   typedef logic [OffsetWidth-1:0] offset_t;
   /// Address Type
   typedef logic [AddrWidth-1:0] addr_t;
+  /// User Type
+  typedef logic [UserWidth-1:0] user_t;
   /// AXI ID Type
   typedef logic [IdWidth-1:0] axi_id_t;
 
   /// id: AXI id
   /// last: last transaction in burst
   /// address: address of burst
+  /// user: user-defined signal
   /// length: burst length
   /// size: bytes in each burst
   /// burst: burst type; only INC supported
@@ -95,6 +100,7 @@ module axi_dma_backend #(
     axi_id_t id;
     logic last;
     addr_t addr;
+    user_t user;
     axi_pkg::len_t len;
     axi_pkg::size_t size;
     axi_pkg::burst_t burst;
@@ -207,6 +213,7 @@ module axi_dma_backend #(
   axi_dma_burst_reshaper #(
       .DataWidth  (DataWidth),
       .AddrWidth  (AddrWidth),
+      .UserWidth  (UserWidth),
       .IdWidth    (IdWidth),
       .burst_req_t(burst_req_t),
       .read_req_t (read_req_t),

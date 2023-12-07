@@ -16,6 +16,8 @@ module axi_dma_burst_reshaper #(
     parameter int unsigned DataWidth   = -1,
     /// Address width of the AXI bus
     parameter int unsigned AddrWidth   = -1,
+    /// User width of the AXI bus
+    parameter int unsigned UserWidth   = -1,
     /// ID width of the AXI bus
     parameter int unsigned IdWidth     = -1,
     /// Arbitrary 1D burst request definition:
@@ -97,6 +99,8 @@ module axi_dma_burst_reshaper #(
   typedef logic [OffsetWidth-1:0] offset_t;
   /// Address Type
   typedef logic [AddrWidth-1:0] addr_t;
+  /// User Type
+  typedef logic [UserWidth-1:0] user_t;
   /// AXI ID Type
   typedef logic [IdWidth-1:0] axi_id_t;
 
@@ -105,6 +109,7 @@ module axi_dma_burst_reshaper #(
     axi_id_t id;
     addr_t addr;
     addr_t num_bytes;
+    user_t user;
     axi_pkg::cache_t cache;
     axi_pkg::burst_t burst;
     logic valid;
@@ -264,6 +269,7 @@ module axi_dma_burst_reshaper #(
     write_req_o.aw.len = ((w_num_bytes + w_addr_offset - 1) >> OffsetWidth);
     write_req_o.aw.size = axi_pkg::size_t'(OffsetWidth);
     write_req_o.aw.id = burst_q.dst.id;
+    write_req_o.aw.user = burst_q.dst.user;
     // hand over internal transaction id
     write_req_o.aw.last = w_finish;
     write_req_o.aw.burst = burst_q.dst.burst;
@@ -301,6 +307,7 @@ module axi_dma_burst_reshaper #(
       burst_d.dst.num_bytes = burst_req_i.num_bytes;
       burst_d.dst.cache     = burst_req_i.cache_dst;
       burst_d.dst.burst     = burst_req_i.burst_dst;
+      burst_d.dst.user      = burst_req_i.user_dst;
       // check if transfer is possible -> num_bytes has to be larger than 0
       burst_d.dst.valid     = (burst_req_i.num_bytes == '0) ? 1'b0 : valid_i;
 

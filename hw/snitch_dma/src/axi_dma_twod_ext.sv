@@ -91,6 +91,8 @@ module axi_dma_twod_ext #(
             burst_req_o.src          = twod_req_current.src;
             burst_req_o.dst          = twod_req_current.dst;
             burst_req_o.num_bytes    = twod_req_current.num_bytes;
+            burst_req_o.user_src     = twod_req_current.user_src;
+            burst_req_o.user_dst     = twod_req_current.user_dst;
             burst_req_o.cache_src    = twod_req_current.cache_src;
             burst_req_o.cache_dst    = twod_req_current.cache_dst;
             burst_req_o.burst_src    = twod_req_current.burst_src;

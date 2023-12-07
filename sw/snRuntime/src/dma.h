@@ -53,10 +53,77 @@ inline snrt_dma_txid_t snrt_dma_start_1d_wideptr(uint64_t dst, uint64_t src,
     }
 }
 
+/// Initiate an asynchronous 1D DMA transfer with wide 64-bit pointers.
+inline snrt_dma_txid_t snrt_dma_start_1d_mcast_wideptr(uint64_t dst,
+                                                       uint64_t src,
+                                                       uint32_t mcast,
+                                                       size_t size) {
+    // Current DMA does not allow transfers with size == 0 (blocks)
+    // TODO(colluca) remove this check once new DMA is integrated
+    if (size > 0) {
+        register uint32_t reg_dst_low asm("a0") = dst >> 0;    // 10
+        register uint32_t reg_dst_high asm("a1") = dst >> 32;  // 11
+        register uint32_t reg_src_low asm("a2") = src >> 0;    // 12
+        register uint32_t reg_src_high asm("a3") = src >> 32;  // 13
+        register uint32_t reg_mcast asm("a4") = mcast;         // 14
+        register uint32_t reg_size asm("a5") = size;           // 15
+
+        // dmmcast a4
+        asm volatile(
+            ".word (0b0001000 << 25) | \
+                (     (14) << 15) | \
+                (    0b000 << 12) | \
+                (0b0101011 <<  0)   \n"
+            :
+            : "r"(reg_mcast));
+
+        // dmsrc a2, a3
+        asm volatile(
+            ".word (0b0000000 << 25) | \
+                (     (13) << 20) | \
+                (     (12) << 15) | \
+                (    0b000 << 12) | \
+                (0b0101011 <<  0)   \n" ::"r"(reg_src_high),
+            "r"(reg_src_low));
+
+        // dmdst a0, a1
+        asm volatile(
+            ".word (0b0000001 << 25) | \
+                (     (11) << 20) | \
+                (     (10) << 15) | \
+                (    0b000 << 12) | \
+                (0b0101011 <<  0)   \n" ::"r"(reg_dst_high),
+            "r"(reg_dst_low));
+
+        // dmcpyi a0, a5, 0b00
+        register uint32_t reg_txid asm("a0");  // 10
+        asm volatile(
+            ".word (0b0000010 << 25) | \
+                (  0b00000 << 20) | \
+                (     (15) << 15) | \
+                (    0b000 << 12) | \
+                (     (10) <<  7) | \
+                (0b0101011 <<  0)   \n"
+            : "=r"(reg_txid)
+            : "r"(reg_size));
+
+        return reg_txid;
+    } else {
+        return -1;
+    }
+}
+
 /// Initiate an asynchronous 1D DMA transfer.
 inline snrt_dma_txid_t snrt_dma_start_1d(void *dst, const void *src,
                                          size_t size) {
     return snrt_dma_start_1d_wideptr((size_t)dst, (size_t)src, size);
+}
+
+/// Initiate an asynchronous 1D DMA transfer.
+inline snrt_dma_txid_t snrt_dma_start_1d_mcast(void *dst, const void *src,
+                                               uint32_t mcast, size_t size) {
+    return snrt_dma_start_1d_mcast_wideptr((size_t)dst, (size_t)src, mcast,
+                                           size);
 }
 
 /// Initiate an asynchronous 2D DMA transfer with wide 64-bit pointers.
