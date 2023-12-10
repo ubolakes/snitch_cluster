@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include "cls_decls.h"
+
 extern __thread cls_t* _cls_ptr;
 
 inline cls_t* cls() { return _cls_ptr; }

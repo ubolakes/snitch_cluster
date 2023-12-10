@@ -2,6 +2,8 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
+#include "alloc.h"
+
 snrt_allocator_t l3_allocator;
 
 extern void *snrt_l1_next();

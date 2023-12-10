@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include <stdint.h>
+
 /// Different perf counters
 // Must match with `snitch_cluster_peripheral`
 enum snrt_perf_cnt {

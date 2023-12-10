@@ -2,8 +2,7 @@
 // See https://llvm.org/LICENSE.txt for license information.
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
-#ifndef INTERFACE_H
-#define INTERFACE_H
+#pragma once
 
 #include <stdint.h>
 
@@ -153,5 +152,3 @@ enum sched_type : kmp_int32 {
 
     kmp_sch_default = kmp_sch_static /**< default scheduling algorithm */
 };
-
-#endif

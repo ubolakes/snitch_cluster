@@ -4,6 +4,9 @@
 
 #pragma once
 
+#include <stdint.h>
+#include <stddef.h>
+
 /// Synchronize the integer and float pipelines.
 inline void snrt_fpu_fence() {
     unsigned tmp;

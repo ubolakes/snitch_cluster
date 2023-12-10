@@ -4,6 +4,16 @@
 
 #pragma once
 
+#include "riscv.h"
+
+#include <stddef.h>
+#include <stdint.h>
+
+#include "cluster_interrupt_decls.h"
+#include "team_decls.h"
+#include "alloc_decls.h"
+#include "sync_decls.h"
+
 //================================================================================
 // Settings
 //================================================================================

@@ -2,6 +2,8 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
+#include "team.h"
+
 extern uint32_t snrt_hartid();
 
 extern uint32_t snrt_global_core_base_hartid();

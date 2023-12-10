@@ -9,11 +9,13 @@ set(OCRT_INCLUDE_DIRS
 
 set(OCRT_HEADERS
         runtime/heterogeneous_runtime.h
+        runtime/heterogeneous_runtime_decls.h
 
         host/host.h
 
         device/occamy_defs.h
         device/occamy_device.h
+        device/occamy_device_decls.h
         device/occamy_memory.h
         device/snrt.h
 )
@@ -23,9 +25,9 @@ set(OCRT_SOURCES
         host/host.ld
         host/start.S
 
-#        device/occamy_device.c
-#        device/occamy_memory.c
-#        device/occamy_start.c
+        device/occamy_device.c
+        device/occamy_memory.c
+        device/occamy_start.c
 #        device/occamy_start.S
         device/putchar.c
         device/snrt.c

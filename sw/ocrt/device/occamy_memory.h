@@ -4,6 +4,12 @@
 
 #pragma once
 
+#include <stdint.h>
+
+#include "occamy_device_decls.h"
+#include "occamy_memory_map.h"
+#include "team_decls.h"
+
 extern __thread uint32_t _snrt_cluster_hw_barrier;
 
 inline uint32_t __attribute__((const)) snrt_l1_start_addr() {

@@ -41,22 +41,24 @@ set(SNRT_HEADERS
 )
 
 set(SNRT_SOURCES
-#        src/alloc.c
-#        src/cls.c
-#        src/cluster_interrupts.c
-#        src/dm.c
-#        src/dma.c
-#        src/global_interrupts.c
-#        src/printf.c
-#        src/ssr.c
-#        src/start.c
-#        src/sync.c
-#        src/team.c
-#
-#        src/omp/eu.c
-#        src/omp/kmp.c
-#        src/omp/omp.c
+        src/alloc.c
+        src/cls.c
+        src/cluster_interrupts.c
+        src/dm.c
+        src/dma.c
+        src/global_interrupts.c
+        src/printf.c
+        src/ssr.c
+        src/start.c
+        src/sync.c
+        src/team.c
+
+        src/omp/eu.c
+        src/omp/kmp.c
+        src/omp/omp.c
 )
+
+#set_source_files_properties(${HEADERS} PROPERTIES HEADER_FILE_ONLY TRUE)
 
 # Make Absolute
 list(TRANSFORM SNRT_INCLUDE_DIRS PREPEND "${CMAKE_CURRENT_SOURCE_DIR}/")

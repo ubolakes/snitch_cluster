@@ -9,8 +9,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "../../../deps/riscv-opcodes/encoding.h"
+#include <riscv-opcodes/encoding.h>
 #include "omp.h"
+
+#include "team_decls.h"
 
 typedef void (*__task_type32)(_kmp_ptr32, _kmp_ptr32, _kmp_ptr32);
 typedef void (*__task_type64)(_kmp_ptr64, _kmp_ptr64, _kmp_ptr64);

@@ -2,10 +2,18 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-#ifndef EU_H
-#define EU_H
+#pragma once
+
+#include <stdint.h>
 
 #include "eu_decls.h"
+#include "riscv_decls.h"
+#include "sync_decls.h"
+#include "cluster_interrupt_decls.h"
+#include "team_decls.h"
+#include "alloc_decls.h"
+
+#include <riscv-opcodes/encoding.h>
 
 //================================================================================
 // Settings
@@ -299,5 +307,3 @@ inline void eu_run_empty(uint32_t core_idx) {
 
     EU_PRINTF(10, "eu_run_empty exit\n");
 }
-
-#endif /* EU_H */

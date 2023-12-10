@@ -2,6 +2,14 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
+#include "cls.h"
+#include "dma.h"
+
+#include <stddef.h>
+#include <stdint.h>
+
+#include "occamy_defs.h"
+
 #ifdef SNRT_INIT_CLS
 static inline uint32_t snrt_cls_base_addr() {
     extern volatile uint32_t __cdata_start, __cdata_end;

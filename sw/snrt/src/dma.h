@@ -4,6 +4,9 @@
 
 #pragma once
 
+#include <stdint.h>
+#include <stddef.h>
+
 /// A DMA transfer identifier.
 typedef uint32_t snrt_dma_txid_t;
 

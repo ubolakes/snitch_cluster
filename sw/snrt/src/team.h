@@ -4,6 +4,10 @@
 
 #pragma once
 
+#include <stdint.h>
+#include "team_decls.h"
+#include "platform.h"
+
 inline uint32_t __attribute__((const)) snrt_hartid() {
     uint32_t hartid;
     asm("csrr %0, mhartid" : "=r"(hartid));

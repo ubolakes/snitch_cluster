@@ -8,7 +8,7 @@ set(EXTERNAL_HEADERS
 )
 
 set(EXTERNAL_SOURCES
-        printf/printf.c
+#        printf/printf.c
 )
 
 # Make paths absolute

@@ -4,7 +4,10 @@
 
 #pragma once
 
+#include <stdint.h>
 #include <riscv-opcodes/encoding.h>
+
+#include "memory_decls.h"
 
 /**
  * @brief Write mask to the cluster-local interrupt set register

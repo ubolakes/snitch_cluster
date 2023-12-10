@@ -2,6 +2,8 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
+#include "occamy_memory.h"
+
 #define SNRT_INIT_TLS
 #define SNRT_INIT_BSS
 #define SNRT_INIT_CLS
@@ -17,5 +19,3 @@ static inline void snrt_crt0_callback3() {
 }
 
 static inline void snrt_crt0_callback7() { return_to_cva6(SYNC_CLUSTERS); }
-
-#include "start.c"

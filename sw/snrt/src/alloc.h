@@ -4,6 +4,14 @@
 
 #pragma once
 
+#include <stddef.h>
+#include <stdint.h>
+
+#include "alloc_decls.h"
+#include "cls_decls.h"
+#include "memory_decls.h"
+#include "team_decls.h"
+
 #define ALIGN_UP(addr, size) (((addr) + (size)-1) & ~((size)-1))
 #define ALIGN_DOWN(addr, size) ((addr) & ~((size)-1))
 

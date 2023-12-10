@@ -2,6 +2,8 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
+#include "global_interrupts.h"
+
 extern void snrt_int_sw_clear(uint32_t hartid);
 
 extern void snrt_int_sw_set(uint32_t hartid);

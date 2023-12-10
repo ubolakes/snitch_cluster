@@ -2,6 +2,8 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
+#include "occamy_device.h"
+
 extern void post_wakeup_cl();
 
 extern comm_buffer_t* get_communication_buffer();

@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include <stdint.h>
 #include <riscv-opcodes/encoding.h>
 
 static inline void snrt_wfi();

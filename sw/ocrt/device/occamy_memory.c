@@ -2,6 +2,8 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
+#include "occamy_memory.h"
+
 __thread uint32_t _snrt_cluster_hw_barrier;
 
 extern uint32_t snrt_l1_start_addr();

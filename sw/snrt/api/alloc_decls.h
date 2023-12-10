@@ -4,6 +4,9 @@
 
 #pragma once
 
+#include <stddef.h>
+#include <stdint.h>
+
 typedef struct {
     // Base address from where allocation starts
     uint32_t base;

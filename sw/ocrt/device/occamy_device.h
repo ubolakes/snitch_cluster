@@ -4,9 +4,15 @@
 
 #pragma once
 
-#include "heterogeneous_runtime.h"
+#include "occamy_device_decls.h"
 
-typedef enum { SYNC_ALL, SYNC_CLUSTERS, SYNC_NONE } sync_t;
+#include <stdint.h>
+
+#include "cluster_interrupt_decls.h"
+#include "global_interrupt_decls.h"
+#include "heterogeneous_runtime.h"
+#include "sync_decls.h"
+#include "team_decls.h"
 
 inline uint32_t __attribute__((const)) snrt_quadrant_idx() {
     return snrt_cluster_idx() / N_CLUSTERS_PER_QUAD;

@@ -4,6 +4,10 @@
 
 #pragma once
 
+#include <stdint.h>
+
+#include "memory_decls.h"
+
 /**
  * @brief Clear SW interrupt in CLINT
  * @details
