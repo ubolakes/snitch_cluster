@@ -2,6 +2,8 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
+#pragma once
+
 #include "snrt.h"
 
 inline void axpy(uint32_t l, double a, double* x, double* y, double* z) {

@@ -2,6 +2,8 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
+#pragma once
+
 #include "heterogeneous_runtime.h"
 
 typedef enum { SYNC_ALL, SYNC_CLUSTERS, SYNC_NONE } sync_t;

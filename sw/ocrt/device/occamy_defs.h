@@ -2,6 +2,8 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
+#pragma once
+
 #include "occamy_base_addr.h"
 #include "occamy_cfg.h"
 #include "snitch_cluster_peripheral.h"

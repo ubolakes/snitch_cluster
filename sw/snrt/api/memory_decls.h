@@ -2,6 +2,8 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
+#pragma once
+
 inline uint32_t __attribute__((const)) snrt_l1_start_addr();
 
 inline uint32_t __attribute__((const)) snrt_l1_end_addr();

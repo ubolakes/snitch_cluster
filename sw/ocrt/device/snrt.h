@@ -2,8 +2,8 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-#ifndef SNRT_H
-#define SNRT_H
+#pragma once
+
 
 #include <stddef.h>
 #include <stdint.h>
@@ -35,5 +35,3 @@
 #include "ssr.h"
 #include "sync.h"
 #include "team.h"
-
-#endif  // SNRT_H

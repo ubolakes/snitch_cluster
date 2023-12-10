@@ -2,8 +2,7 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-#ifndef DM_H
-#define DM_H
+#pragma once
 
 //================================================================================
 // Settings
@@ -382,5 +381,3 @@ inline void dm_wait_ready(void) {
         ;
     _dm_mtx_release();
 }
-
-#endif /* DM_H */

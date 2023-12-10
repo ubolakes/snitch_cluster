@@ -2,6 +2,8 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
+#pragma once
+
 inline uint32_t __attribute__((const)) snrt_hartid();
 inline uint32_t __attribute__((const)) snrt_cluster_num();
 inline uint32_t __attribute__((const)) snrt_cluster_core_num();

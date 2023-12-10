@@ -6,6 +6,8 @@
 // Hakim Filali <hfilali@student.ee.ethz.ch>
 // Luca Colagrande <colluca@iis.ee.ethz.ch>
 
+#pragma once
+
 #include "snrt.h"
 
 // Numerical Recipes from the "quick and dirty generators" list, Chapter 7.1,

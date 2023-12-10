@@ -16,6 +16,8 @@
 // the given value via the 8th register. Alternatively, the `write_csr(reg,
 // val)` macro can be used directly.
 
+#pragma once
+
 #define dump_float(name, reg)                                                  \
     static __attribute__((always_inline)) inline void dump_##name(float val) { \
         asm volatile("csrw " #reg ", %0" ::"rK"(val));                         \
