@@ -8,6 +8,11 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 #set(CMAKE_TOOLCHAIN_FILE cmake/toolchain-llvm.cmake CACHE STRING "Toolchain to use")
 # use instead: -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-llvm.cmake
 
+option(USE_OCCAMY "Use Occamy Hardware" ON)
+if(USE_OCCAMY)
+    add_definitions(-DOCCAMY)
+endif()
+
 add_subdirectory(external)
 add_subdirectory(platform)
 
@@ -27,7 +32,7 @@ set(COMMON_SOURCES
 list(APPEND COMMON_INCLUDE_DIRS ${EXTERNAL_INCLUDE_DIRS} ${PLATFORM_INCLUDE_DIRS})
 list(APPEND COMMON_SOURCES ${EXTERNAL_SOURCES} ${PLATFORM_SOURCES})
 
-message("COMMON_INCLUDE_DIRS: ${COMMON_INCLUDE_DIRS}")
+message("COMMON_SOURCES: ${COMMON_SOURCES}")
 add_subdirectory(snrt)
 add_subdirectory(ocrt)
 

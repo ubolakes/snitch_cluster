@@ -2,6 +2,8 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
+#include "sys_dma.h"
+
 extern volatile uint64_t *sys_dma_src_ptr(void);
 extern volatile uint64_t *sys_dma_dst_ptr(void);
 extern volatile uint64_t *sys_dma_num_bytes_ptr(void);
