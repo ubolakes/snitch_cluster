@@ -9,27 +9,29 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 # use instead: -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-llvm.cmake
 
 add_subdirectory(external)
-message("EXTERNAL_INCLUDE_DIRS: ${EXTERNAL_INCLUDE_DIRS}")
-message("EXTERNAL_SOURCES: ${EXTERNAL_SOURCES}")
+add_subdirectory(platform)
 
 set(COMMON_INCLUDE_DIRS
         ${CMAKE_CURRENT_SOURCE_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}/blas
         ${CMAKE_CURRENT_SOURCE_DIR}/math
         ${CMAKE_CURRENT_SOURCE_DIR}/prng
-        ${EXTERNAL_INCLUDE_DIRS}
 )
 set(COMMON_SOURCES
         ${CMAKE_CURRENT_SOURCE_DIR}/blas/gemm.h
         ${CMAKE_CURRENT_SOURCE_DIR}/blas/axpy.h
         ${CMAKE_CURRENT_SOURCE_DIR}/blas/blas.h
         ${CMAKE_CURRENT_SOURCE_DIR}/prng/lcg.h
-        ${EXTERNAL_SOURCES}
 )
+
+list(APPEND COMMON_INCLUDE_DIRS ${EXTERNAL_INCLUDE_DIRS} ${PLATFORM_INCLUDE_DIRS})
+list(APPEND COMMON_SOURCES ${EXTERNAL_SOURCES} ${PLATFORM_SOURCES})
+
 message("COMMON_INCLUDE_DIRS: ${COMMON_INCLUDE_DIRS}")
 add_subdirectory(snrt)
 add_subdirectory(ocrt)
 
+message("PLATFORM_SOURCES: ${SNRT_SOURCES}")
 message("SNRT_SOURCES: ${SNRT_SOURCES}")
 message("OCRT_SOURCES: ${OCRT_SOURCES}")
 

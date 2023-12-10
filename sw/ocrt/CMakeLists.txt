@@ -4,8 +4,6 @@ set(OCRT_INCLUDE_DIRS
         include
         host
         device
-        platform
-        platform/generated
         runtime
 )
 
@@ -18,22 +16,6 @@ set(OCRT_HEADERS
         device/occamy_device.h
         device/occamy_memory.h
         device/snrt.h
-
-        platform/occamy.h
-        platform/occamy_memory_map.h
-
-        platform/generated/bitfield.h
-        platform/generated/clint.h
-        platform/generated/fpu_util.h
-        platform/generated/occamy_base_addr.h
-        platform/generated/occamy_cfg.h
-        platform/generated/occamy_soc_ctrl.h
-        platform/generated/snitch_cluster_peripheral.h
-        platform/generated/snitch_hbm_xbar_peripheral.h
-        platform/generated/snitch_quad_peripheral.h
-        platform/generated/sys_dma.h
-        platform/generated/tlb.h
-        platform/generated/uart.h
 )
 
 set(OCRT_SOURCES
@@ -47,8 +29,6 @@ set(OCRT_SOURCES
 #        device/occamy_start.S
         device/putchar.c
         device/snrt.c
-
-#        platform/generated/sys_dma.c
 )
 
 # Make Absolute
