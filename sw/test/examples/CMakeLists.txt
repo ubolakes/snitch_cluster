@@ -18,7 +18,7 @@ project(Examples LANGUAGES C ASM)
 add_compile_options(-O3 -g -ffunction-sections)
 
 # Build the runtime
-add_subdirectory(../snRuntime snRuntime)
+add_subdirectory(../snrt snRuntime)
 
 # Includes
 include_directories(${SNRUNTIME_INCLUDE_DIRS})
