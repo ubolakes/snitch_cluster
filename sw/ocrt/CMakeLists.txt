@@ -8,6 +8,8 @@ set(OCRT_INCLUDE_DIRS
 )
 
 set(OCRT_HEADERS
+        ocrt.h
+
         runtime/heterogeneous_runtime.h
         runtime/heterogeneous_runtime_decls.h
 

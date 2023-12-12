@@ -8,6 +8,8 @@ set(SNRT_INCLUDE_DIRS
 )
 
 set(SNRT_HEADERS
+        src/snrt.h
+
         api/alloc_decls.h
         api/cls_decls.h
         api/cluster_interrupt_decls.h

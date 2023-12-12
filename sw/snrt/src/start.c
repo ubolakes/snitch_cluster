@@ -8,7 +8,11 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "occamy_defs.h"
+#include "team.h"
+#include "sync.h"
+#include "snitch_cluster_memory.h"
+
+#include "platform.h"
 
 #ifdef SNRT_INIT_CLS
 static inline uint32_t snrt_cls_base_addr() {
