@@ -15,9 +15,9 @@ target_link_directories(${TARGET} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_options(${TARGET} PUBLIC -T${SNRT_LINKER_SCRIPT} -Wl,-Map=${CMAKE_CURRENT_BINARY_DIR}/${TARGET}.map)
 set_target_properties(${TARGET} PROPERTIES LINK_DEPENDS ${SNRT_LINKER_SCRIPT})
 
-add_custom_command(
-        OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${TARGET}.d
-        COMMAND ${CMAKE_OBJDUMP} ARGS -d ${CMAKE_CURRENT_BINARY_DIR}/${TARGET}.elf > ${CMAKE_CURRENT_BINARY_DIR}/${TARGET}.d
-        DEPENDS ${TARGET}
+add_custom_command(TARGET ${TARGET} POST_BUILD
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+        BYPRODUCTS ${TARGET}.d
+        COMMAND ${CMAKE_OBJDUMP} ARGS -d ${TARGET} > ${TARGET}.d
         COMMENT "Generating objdump .d files."
 )
