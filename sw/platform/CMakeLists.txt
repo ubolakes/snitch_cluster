@@ -6,6 +6,7 @@ set(PLATFORM_INCLUDE_DIRS
 
 set(PLATFORM_HEADERS
         platform.h
+        platform_memory.h
 )
 
 set(PLATFORM_SOURCES

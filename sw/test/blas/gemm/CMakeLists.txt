@@ -6,6 +6,7 @@ add_executable(${TARGET}
     main.c
     data.h
 )
+target_compile_definitions(${TARGET} PUBLIC SNITCH_CLUSTER) # Set Platform
 
 target_include_directories(${TARGET} PUBLIC ${COMMON_INCLUDE_DIRS} ${PLATFORM_SNC_INCLUDE_DIRS} ${SNRT_INCLUDE_DIRS}) # ${OCRT_INCLUDE_DIRS})
 target_sources(${TARGET} PUBLIC ${COMMON_SOURCES} ${PLATFORM_SNC_SOURCES} ${SNRT_SOURCES}) # ${OCRT_SOURCES})
