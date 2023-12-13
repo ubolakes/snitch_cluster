@@ -74,17 +74,17 @@
 
 #define quadrant_cfg_offset 0x10000
 
-inline uintptr_t translate_address(uintptr_t address, uint32_t instance,
+static inline uintptr_t translate_address(uintptr_t address, uint32_t instance,
                                    uint32_t offset) {
     return address + instance * offset;
 }
 
-inline uintptr_t translate_cluster_address(uintptr_t address,
+static inline uintptr_t translate_cluster_address(uintptr_t address,
                                            uint32_t cluster_idx) {
     return translate_address(address, cluster_idx, cluster_offset);
 }
 
-inline uintptr_t translate_quadrant_cfg_address(uintptr_t address,
+static inline uintptr_t translate_quadrant_cfg_address(uintptr_t address,
                                                 uint32_t quadrant_idx) {
     return translate_address(address, quadrant_idx, quadrant_cfg_offset);
 }
@@ -93,64 +93,64 @@ inline uintptr_t translate_quadrant_cfg_address(uintptr_t address,
 // Derived addresses
 //===============================================================
 
-inline uintptr_t cluster_clint_clr_addr(uint32_t cluster_idx) {
+static inline uintptr_t cluster_clint_clr_addr(uint32_t cluster_idx) {
     return translate_cluster_address(cluster_clint_clr_base, cluster_idx);
 }
 
-inline uintptr_t cluster_clint_set_addr(uint32_t cluster_idx) {
+static inline uintptr_t cluster_clint_set_addr(uint32_t cluster_idx) {
     return translate_cluster_address(cluster_clint_set_base, cluster_idx);
 }
 
-inline uintptr_t cluster_tcdm_start_addr(uint32_t cluster_idx) {
+static inline uintptr_t cluster_tcdm_start_addr(uint32_t cluster_idx) {
     return translate_cluster_address(QUADRANT_0_CLUSTER_0_TCDM_BASE_ADDR,
                                      cluster_idx);
 }
 
-inline uintptr_t cluster_tcdm_end_addr(uint32_t cluster_idx) {
+static inline uintptr_t cluster_tcdm_end_addr(uint32_t cluster_idx) {
     return translate_cluster_address(QUADRANT_0_CLUSTER_0_PERIPH_BASE_ADDR,
                                      cluster_idx);
 }
 
-inline uintptr_t cluster_hw_barrier_addr(uint32_t cluster_idx) {
+static inline uintptr_t cluster_hw_barrier_addr(uint32_t cluster_idx) {
     return translate_cluster_address(cluster_hw_barrier_base, cluster_idx);
 }
 
-inline uintptr_t cluster_zero_memory_addr(uint32_t cluster_idx) {
+static inline uintptr_t cluster_zero_memory_addr(uint32_t cluster_idx) {
     return translate_cluster_address(cluster_zero_memory_base, cluster_idx);
 }
 
-inline uintptr_t quad_cfg_reset_n_addr(uint32_t quadrant_idx) {
+static inline uintptr_t quad_cfg_reset_n_addr(uint32_t quadrant_idx) {
     return translate_quadrant_cfg_address(quad_cfg_reset_n_base, quadrant_idx);
 }
 
-inline uintptr_t quad_cfg_clk_ena_addr(uint32_t quadrant_idx) {
+static inline uintptr_t quad_cfg_clk_ena_addr(uint32_t quadrant_idx) {
     return translate_quadrant_cfg_address(quad_cfg_clk_ena_base, quadrant_idx);
 }
 
-inline uintptr_t quad_cfg_isolate_addr(uint32_t quadrant_idx) {
+static inline uintptr_t quad_cfg_isolate_addr(uint32_t quadrant_idx) {
     return translate_quadrant_cfg_address(quad_cfg_isolate_base, quadrant_idx);
 }
 
-inline uintptr_t quad_cfg_isolated_addr(uint32_t quadrant_idx) {
+static inline uintptr_t quad_cfg_isolated_addr(uint32_t quadrant_idx) {
     return translate_quadrant_cfg_address(quad_cfg_isolated_base, quadrant_idx);
 }
 
-inline uintptr_t quad_cfg_ro_cache_enable_addr(uint32_t quadrant_idx) {
+static inline uintptr_t quad_cfg_ro_cache_enable_addr(uint32_t quadrant_idx) {
     return translate_quadrant_cfg_address(quad_cfg_ro_cache_enable_base,
                                           quadrant_idx);
 }
 
-inline uintptr_t quad_cfg_ro_cache_addr_rule_addr(uint32_t quadrant_idx) {
+static inline uintptr_t quad_cfg_ro_cache_addr_rule_addr(uint32_t quadrant_idx) {
     return translate_quadrant_cfg_address(quad_cfg_ro_cache_addr_rule_base,
                                           quadrant_idx);
 }
 
-inline uintptr_t soc_ctrl_scratch_addr(uint32_t reg_idx) {
+static inline uintptr_t soc_ctrl_scratch_addr(uint32_t reg_idx) {
     return soc_ctrl_scratch_base +
            (reg_idx / OCCAMY_SOC_SCRATCH_SCRATCH_FIELDS_PER_REG) * 4;
 }
 
-inline uintptr_t clint_msip_addr(uint32_t hartid) {
+static inline uintptr_t clint_msip_addr(uint32_t hartid) {
     return clint_msip_base + (hartid / CLINT_MSIP_P_FIELDS_PER_REG) * 4;
 }
 
@@ -165,51 +165,51 @@ inline uintptr_t clint_msip_addr(uint32_t hartid) {
 // synchronize (and execute a memory fence) before reading it. This is usually
 // the case, as this register would only be written by CVA6 during
 // initialization and never changed.
-inline uint32_t* soc_ctrl_scratch_ptr(uint32_t reg_idx) {
+static inline uint32_t* soc_ctrl_scratch_ptr(uint32_t reg_idx) {
     return (uint32_t*)soc_ctrl_scratch_addr(reg_idx);
 }
 
-inline volatile uint32_t* cluster_clint_clr_ptr(uint32_t cluster_idx) {
+static inline volatile uint32_t* cluster_clint_clr_ptr(uint32_t cluster_idx) {
     return (volatile uint32_t*)cluster_clint_clr_addr(cluster_idx);
 }
 
-inline volatile uint32_t* cluster_clint_set_ptr(uint32_t cluster_idx) {
+static inline volatile uint32_t* cluster_clint_set_ptr(uint32_t cluster_idx) {
     return (volatile uint32_t*)cluster_clint_set_addr(cluster_idx);
 }
 
-inline volatile uint32_t* cluster_hw_barrier_ptr(uint32_t cluster_idx) {
+static inline volatile uint32_t* cluster_hw_barrier_ptr(uint32_t cluster_idx) {
     return (volatile uint32_t*)cluster_hw_barrier_addr(cluster_idx);
 }
 
-inline volatile uint32_t* cluster_zero_memory_ptr(uint32_t cluster_idx) {
+static inline volatile uint32_t* cluster_zero_memory_ptr(uint32_t cluster_idx) {
     return (volatile uint32_t*)cluster_zero_memory_addr(cluster_idx);
 }
 
-inline volatile uint32_t* clint_msip_ptr(uint32_t hartid) {
+static inline volatile uint32_t* clint_msip_ptr(uint32_t hartid) {
     return (volatile uint32_t*)clint_msip_addr(hartid);
 }
 
-inline volatile uint32_t* quad_cfg_reset_n_ptr(uint32_t quad_idx) {
+static inline volatile uint32_t* quad_cfg_reset_n_ptr(uint32_t quad_idx) {
     return (volatile uint32_t*)quad_cfg_reset_n_addr(quad_idx);
 }
 
-inline volatile uint32_t* quad_cfg_clk_ena_ptr(uint32_t quad_idx) {
+static inline volatile uint32_t* quad_cfg_clk_ena_ptr(uint32_t quad_idx) {
     return (volatile uint32_t*)quad_cfg_clk_ena_addr(quad_idx);
 }
 
-inline volatile uint32_t* quad_cfg_isolate_ptr(uint32_t quad_idx) {
+static inline volatile uint32_t* quad_cfg_isolate_ptr(uint32_t quad_idx) {
     return (volatile uint32_t*)quad_cfg_isolate_addr(quad_idx);
 }
 
-inline volatile uint32_t* quad_cfg_isolated_ptr(uint32_t quad_idx) {
+static inline volatile uint32_t* quad_cfg_isolated_ptr(uint32_t quad_idx) {
     return (volatile uint32_t*)quad_cfg_isolated_addr(quad_idx);
 }
 
-inline volatile uint32_t* quad_cfg_ro_cache_enable_ptr(uint32_t quad_idx) {
+static inline volatile uint32_t* quad_cfg_ro_cache_enable_ptr(uint32_t quad_idx) {
     return (volatile uint32_t*)quad_cfg_ro_cache_enable_addr(quad_idx);
 }
 
-inline volatile uint64_t* quad_cfg_ro_cache_addr_rule_ptr(uint32_t quad_idx,
+static inline volatile uint64_t* quad_cfg_ro_cache_addr_rule_ptr(uint32_t quad_idx,
                                                           uint32_t rule_idx) {
     volatile uint64_t* p =
         (volatile uint64_t*)quad_cfg_ro_cache_addr_rule_addr(quad_idx);

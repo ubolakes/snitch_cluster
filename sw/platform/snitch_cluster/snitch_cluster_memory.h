@@ -2,7 +2,12 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
+#pragma once
+
 #include <stdint.h>
+
+#include "snitch_cluster_addrmap.h"
+#include "snitch_cluster_peripheral.h"
 
 //===============================================================
 // Constants
@@ -30,11 +35,11 @@
 // snRuntime interface functions
 //===============================================================
 
-inline uint32_t __attribute__((const)) snrt_l1_start_addr() {
+static inline uint32_t __attribute__((const)) snrt_l1_start_addr() {
     return CLUSTER_TCDM_START_ADDR;
 }
 
-inline uint32_t __attribute__((const)) snrt_l1_end_addr() {
+static inline uint32_t __attribute__((const)) snrt_l1_end_addr() {
     return CLUSTER_TCDM_END_ADDR;
 }
 
@@ -54,6 +59,6 @@ inline uint32_t __attribute__((const)) snrt_cluster_perf_counters_addr() {
     return CLUSTER_PERF_COUNTER_ADDR;
 }
 
-inline volatile uint32_t* __attribute__((const)) snrt_zero_memory_ptr() {
+static inline volatile uint32_t* __attribute__((const)) snrt_zero_memory_ptr() {
     return (uint32_t*)CLUSTER_ZERO_MEM_START_ADDR;
 }

@@ -8,8 +8,10 @@
 #include <stdint.h>
 
 // Snitch cluster specific
-#include "snitch_cluster_defs.h"
-#include "snitch_cluster_memory.h"
+// #include "snitch_cluster_defs.h"
+// #include "snitch_cluster_memory.h"
+#include <platform.h>
+#include <platform_memory.h>
 
 // Forward declarations
 #include "alloc_decls.h"
@@ -32,7 +34,7 @@
 #include "perf_cnt.h"
 #include "printf.h"
 #include "riscv.h"
-#include "snitch_cluster_global_interrupts.h"
+// #include "snitch_cluster_global_interrupts.h"
 #include "ssr.h"
 #include "sync.h"
 #include "team.h"

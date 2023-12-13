@@ -6,6 +6,9 @@
 
 snrt_allocator_t l3_allocator;
 
+extern snrt_allocator_t *snrt_l1_allocator();
+extern snrt_allocator_t *snrt_l3_allocator();
+
 extern void *snrt_l1_next();
 extern void *snrt_l3_next();
 

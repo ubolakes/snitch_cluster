@@ -2,6 +2,8 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
+#pragma once
+
 // Use cluster interrupts behind the scenes, since we only have one cluster
 inline void snrt_int_sw_clear(uint32_t hartid) {
     snrt_int_cluster_clr(1 << hartid);

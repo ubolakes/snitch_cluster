@@ -67,29 +67,29 @@ extern "C" {
 #define IDMA_CONF_DEBURST 0
 #define IDMA_CONF_SERIALIZE 0
 
-inline volatile uint64_t *sys_dma_src_ptr(void) {
+static inline volatile uint64_t *sys_dma_src_ptr(void) {
     return (volatile uint64_t *)IDMA_SRC_ADDR;
 }
-inline volatile uint64_t *sys_dma_dst_ptr(void) {
+static inline volatile uint64_t *sys_dma_dst_ptr(void) {
     return (volatile uint64_t *)IDMA_DST_ADDR;
 }
-inline volatile uint64_t *sys_dma_num_bytes_ptr(void) {
+static inline volatile uint64_t *sys_dma_num_bytes_ptr(void) {
     return (volatile uint64_t *)IDMA_NUMBYTES_ADDR;
 }
-inline volatile uint64_t *sys_dma_conf_ptr(void) {
+static inline volatile uint64_t *sys_dma_conf_ptr(void) {
     return (volatile uint64_t *)IDMA_CONF_ADDR;
 }
-inline volatile uint64_t *sys_dma_status_ptr(void) {
+static inline volatile uint64_t *sys_dma_status_ptr(void) {
     return (volatile uint64_t *)IDMA_STATUS_ADDR;
 }
-inline volatile uint64_t *sys_dma_nextid_ptr(void) {
+static inline volatile uint64_t *sys_dma_nextid_ptr(void) {
     return (volatile uint64_t *)IDMA_NEXTID_ADDR;
 }
-inline volatile uint64_t *sys_dma_done_ptr(void) {
+static inline volatile uint64_t *sys_dma_done_ptr(void) {
     return (volatile uint64_t *)IDMA_DONE_ADDR;
 }
 
-inline uint64_t sys_dma_memcpy(uint64_t dst, uint64_t src, uint64_t size) {
+static inline uint64_t sys_dma_memcpy(uint64_t dst, uint64_t src, uint64_t size) {
     *(sys_dma_src_ptr()) = (uint64_t)src;
     *(sys_dma_dst_ptr()) = (uint64_t)dst;
     *(sys_dma_num_bytes_ptr()) = size;
@@ -100,7 +100,7 @@ inline uint64_t sys_dma_memcpy(uint64_t dst, uint64_t src, uint64_t size) {
     return *(sys_dma_nextid_ptr());
 }
 
-inline void sys_dma_blk_memcpy(uint64_t dst, uint64_t src, uint64_t size) {
+static inline void sys_dma_blk_memcpy(uint64_t dst, uint64_t src, uint64_t size) {
     volatile uint64_t tf_id = sys_dma_memcpy(dst, src, size);
 
     while (*(sys_dma_done_ptr()) != tf_id) {

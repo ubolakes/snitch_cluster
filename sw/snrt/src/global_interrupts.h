@@ -7,6 +7,7 @@
 #include <stdint.h>
 
 #include "memory_decls.h"
+#include "sync_decls.h"
 
 /**
  * @brief Clear SW interrupt in CLINT

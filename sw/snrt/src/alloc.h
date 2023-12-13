@@ -12,6 +12,8 @@
 #include "memory_decls.h"
 #include "team_decls.h"
 
+#include "platform_memory.h"
+
 #define ALIGN_UP(addr, size) (((addr) + (size)-1) & ~((size)-1))
 #define ALIGN_DOWN(addr, size) ((addr) & ~((size)-1))
 
