@@ -19,7 +19,7 @@ set(CMAKE_RANLIB llvm-ranlib)
 
 # Save non-standard variables to cache
 set(CMAKE_OBJCOPY llvm-objcopy -O binary CACHE FILEPATH "The toolchain objcopy command" FORCE)
-set(CMAKE_OBJDUMP llvm-objdump -D CACHE FILEPATH "The toolchain objdump command" FORCE)
+set(CMAKE_OBJDUMP llvm-objdump CACHE FILEPATH "The toolchain objdump command" FORCE)
 set(CMAKE_DWARFDUMP llvm-dwarfdump CACHE FILEPATH "The toolchain dwarfdump/objdump-debug command" FORCE)
 
 get_filename_component(RISCV_TOOLCHAIN_BIN_PATH ${CMAKE_C_COMPILER} DIRECTORY)
