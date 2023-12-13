@@ -15,16 +15,16 @@
 /* Interrupts */
 /**************/
 
-inline void set_host_sw_interrupt() { *clint_msip_ptr(0) = 1; }
+static inline void set_host_sw_interrupt() { *clint_msip_ptr(0) = 1; }
 
-inline void clear_host_sw_interrupt_unsafe() { *clint_msip_ptr(0) = 0; }
+static inline void clear_host_sw_interrupt_unsafe() { *clint_msip_ptr(0) = 0; }
 
-inline void wait_host_sw_interrupt_clear() {
+static inline void wait_host_sw_interrupt_clear() {
     while (*clint_msip_ptr(0))
         ;
 }
 
-inline void clear_host_sw_interrupt() {
+static inline void clear_host_sw_interrupt() {
     clear_host_sw_interrupt_unsafe();
     wait_host_sw_interrupt_clear();
 }
@@ -34,7 +34,7 @@ inline void clear_host_sw_interrupt() {
 /**************************/
 
 // Configure RO cache address range
-inline void configure_read_only_cache_addr_rule(uint32_t quad_idx,
+static inline void configure_read_only_cache_addr_rule(uint32_t quad_idx,
                                                 uint32_t rule_idx,
                                                 uint64_t start_addr,
                                                 uint64_t end_addr) {
@@ -45,6 +45,6 @@ inline void configure_read_only_cache_addr_rule(uint32_t quad_idx,
 }
 
 // Enable RO cache
-inline void enable_read_only_cache(uint32_t quad_idx) {
+static inline void enable_read_only_cache(uint32_t quad_idx) {
     *(quad_cfg_ro_cache_enable_ptr(quad_idx)) = 1;
 }
