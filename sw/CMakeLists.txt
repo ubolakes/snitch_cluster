@@ -24,12 +24,7 @@ set(COMMON_SOURCES
 list(APPEND COMMON_INCLUDE_DIRS ${EXTERNAL_INCLUDE_DIRS} ${BLAS_INCLUDE_DIRS})
 list(APPEND COMMON_SOURCES ${EXTERNAL_SOURCES} ${BLAS_SOURCES})
 
-message("COMMON_SOURCES: ${COMMON_SOURCES}")
 add_subdirectory(snrt)
 add_subdirectory(ocrt)
-
-message("PLATFORM_SOURCES: ${SNRT_SOURCES}")
-message("SNRT_SOURCES: ${SNRT_SOURCES}")
-message("OCRT_SOURCES: ${OCRT_SOURCES}")
 
 add_subdirectory(test)

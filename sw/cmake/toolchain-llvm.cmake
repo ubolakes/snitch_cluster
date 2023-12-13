@@ -107,7 +107,7 @@ set(OCCAMY_DEVICE_LINK_OPTIONS -mcpu=snitch
 ##
 ## Dump Options
 ##
-set(CMAKE_DUMP_OPTIONS
+set(CMAKE_OBJCOPY_OPTIONS
         --remove-section=.comment
         --remove-section=.riscv.attributes
         --remove-section=.debug_info
