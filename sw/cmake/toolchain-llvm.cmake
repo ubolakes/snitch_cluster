@@ -9,6 +9,7 @@ set(CMAKE_SYSTEM_NAME Generic)
 #set(CMAKE_SYSTEM_PROCESSOR rv64imafdc) # For Device
 set(CMAKE_EXECUTABLE_SUFFIX ".elf")
 
+set(CMAKE_C_COMPILER_VERSION 12.0.1) # TODO: calculate this
 set(CMAKE_C_COMPILER_ID Clang)
 set(CMAKE_ASM_COMPILER riscv32-unknown-elf-cc)
 set(CMAKE_C_COMPILER riscv32-unknown-elf-cc)
@@ -22,11 +23,11 @@ set(CMAKE_OBJCOPY llvm-objcopy -O binary CACHE FILEPATH "The toolchain objcopy c
 set(CMAKE_OBJDUMP llvm-objdump CACHE FILEPATH "The toolchain objdump command" FORCE)
 set(CMAKE_DWARFDUMP llvm-dwarfdump CACHE FILEPATH "The toolchain dwarfdump/objdump-debug command" FORCE)
 
-get_filename_component(RISCV_TOOLCHAIN_BIN_PATH ${CMAKE_C_COMPILER} DIRECTORY)
-set(LLVM_LIB_ROOT "${RISCV_TOOLCHAIN_BIN_PATH}/../lib/clang/${LLVM_VER}/lib/" CACHE PATH "Root directory for LLVM libaries" FORCE)
+execute_process(COMMAND bash -c "which ${CMAKE_C_COMPILER}" OUTPUT_VARIABLE RISCV_TOOLCHAIN_BIN_PATH OUTPUT_STRIP_TRAILING_WHITESPACE)
+get_filename_component(RISCV_TOOLCHAIN_BIN_PATH ${RISCV_TOOLCHAIN_BIN_PATH} DIRECTORY)
+set(LLVM_LIB_ROOT "${RISCV_TOOLCHAIN_BIN_PATH}/../lib/clang/${CMAKE_C_COMPILER_VERSION}/lib/" CACHE PATH "Root directory for LLVM libaries" FORCE)
 
-# LTO
-set(CMAKE_INTERPROCEDURAL_OPTIMIZATION true)
+set(CMAKE_INTERPROCEDURAL_OPTIMIZATION true) # LTO, emits -flto=thin
 set(CMAKE_C_COMPILER_AR ${CMAKE_AR})
 set(CMAKE_CXX_COMPILER_AR ${CMAKE_AR})
 set(CMAKE_C_COMPILER_RANLIB ${CMAKE_RANLIB})
@@ -40,12 +41,13 @@ set(CMAKE_CXX_COMPILER_RANLIB ${CMAKE_RANLIB})
 #add_compile_options(-mcpu=snitch -mcmodel=medany)
 add_compile_options(
         -mcmodel=medany
-        -ffast-math -fno-builtin-printf -fno-common -ffunction-sections
-        -static
+        -ffast-math -fno-builtin-printf -fno-common
+        # -ffunction-sections  # only occamy
+        # -static # unused in legacy makefile
         # For SSR register merge we need to disable the scheduler
-        -mllvm -enable-misched=false
+        # -mllvm -enable-misched=false # unused in legacy makefile
         # LLD doesn't support relaxation for RISC-V yet
-        -mno-relax
+        # -mno-relax # unused in legacy makefile
         -fopenmp
         # For smallfloat we need experimental extensions enabled (Zfh)
         -menable-experimental-extensions
@@ -62,7 +64,7 @@ set(OCCAMY_DEVICE_COMPILE_OPTIONS
         -mcpu=snitch -mabi=ilp32d
         -ftls-model=local-exec
         # -menable-experimental-extensions
-#        -mno-fdiv # Not supported by Clang
+        #        -mno-fdiv # Not supported by Clang
         -ftls-model=local-exec
 
         # Required by math library to avoid conflict with stdint definition
@@ -76,13 +78,18 @@ set(OCCAMY_DEVICE_COMPILE_OPTIONS
 ##
 
 # Generic options for the host and device
-add_link_options(-nostartfiles -fuse-ld=lld -Wl,--image-base=0x80000000)
-add_link_options(-static)
+add_link_options(-fuse-ld=${RISCV_TOOLCHAIN_BIN_PATH}/ld.lld)
+add_link_options(-nostartfiles)
+#add_link_options(-L./sw/runtime/rtl # for memory.ld
+#        -L./sw/runtime/rtl/build -lsnRuntime # for libsnRuntime.a
+#)
+#add_link_options(-Wl,--image-base=0x80000000)
+#add_link_options(-static)
 # LLD defaults to -z relro which we don't want in a static ELF
-add_link_options(-Wl,-z,norelro)
-add_link_options(-Wl,--gc-sections)
-add_link_options(-Wl,--no-relax)
-# add_link_options(-Wl,--verbose)
+#add_link_options(-Wl,-z,norelro)
+#add_link_options(-Wl,--gc-sections)
+#add_link_options(-Wl,--no-relax)
+#add_link_options(-Wl,--verbose)
 
 # Libraries
 link_libraries(-lm)
@@ -94,11 +101,11 @@ add_compile_definitions(__TOOLCHAIN_LLVM__)
 
 # Specific options
 set(OCCAMY_HOST_LINK_OPTIONS
-        #        -T$(LINKER_SCRIPT)
-        CACHE STRING "Linker options for the Occamy CVA6 host" FORCE)
-set(OCCAMY_DEVICE_LINK_OPTIONS -mcpu=snitch
-        -nostdlib
         -lc
+        CACHE STRING "Linker options for the Occamy CVA6 host" FORCE)
+set(OCCAMY_DEVICE_LINK_OPTIONS
+        -mcpu=snitch
+        -nostdlib
         "-L${LLVM_LIB_ROOT}"
         -lclang_rt.builtins-riscv32
         CACHE STRING "Linker options for the Occamy snitch device" FORCE)
