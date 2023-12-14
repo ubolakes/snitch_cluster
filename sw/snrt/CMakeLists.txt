@@ -61,7 +61,8 @@ set(SNRT_SOURCES
 )
 list(APPEND SNRT_SOURCES ${SNRT_HEADERS})
 
-set(SNRT_LINKER_SCRIPT base.ld)
+set(SNRT_LINK_INCLUDE_DIRS link)
+set(SNRT_LINKER_SCRIPT link/base.ld)
 
 # Make absolute and export to parent scope
 transform_lists(
