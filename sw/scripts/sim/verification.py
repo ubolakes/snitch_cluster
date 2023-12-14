@@ -12,7 +12,7 @@ import csv
 from elf import Elf
 from pathlib import Path
 
-sys.path.append(str(Path(__file__).parent / '../../target/common/test/'))
+# sys.path.append(str(Path(__file__).parent / '../../target/common/test/'))
 from SnitchSim import SnitchSim  # noqa: E402
 
 

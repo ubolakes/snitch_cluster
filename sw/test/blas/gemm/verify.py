@@ -6,11 +6,12 @@
 # Luca Colagrande <colluca@iis.ee.ethz.ch>
 
 import sys
+import os
 from pathlib import Path
 import numpy as np
-from data.datagen import golden_model
+from datagen import golden_model
 
-sys.path.append(str(Path(__file__).parent / '../../../util/sim/'))
+sys.path.append(os.path.join(os.path.dirname(__file__), "../../../scripts/sim/"))
 import verification  # noqa: E402
 from elf import Elf  # noqa: E402
 from data_utils import bytes_to_doubles, bytes_to_uint32s  # noqa: E402

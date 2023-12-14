@@ -43,6 +43,15 @@ add_executable(${TARGET_DEVICE}
 add_dependencies(${TARGET_DEVICE} ${TARGET_HOST_PART})
 target_compile_definitions(${TARGET_DEVICE} PUBLIC OCCAMY)
 
+# Generate data header
+add_custom_command(
+        OUTPUT device/data.h
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/device
+        DEPENDS device/datagen.py device/params.hjson
+        COMMAND PYTHONPATH=$ENV{PYTHONPATH} python ARGS datagen.py --cfg=params.hjson --section="" > data.h
+)
+configure_file(device/params.hjson device/params.hjson COPYONLY)
+
 target_include_directories(${TARGET_DEVICE} PUBLIC ${COMMON_INCLUDE_DIRS} ${PLATFORM_OCCAMY_INCLUDE_DIRS} ${SNRT_INCLUDE_DIRS} ${OCRT_DEVICE_INCLUDE_DIRS})
 target_sources(${TARGET_DEVICE} PUBLIC ${COMMON_SOURCES} ${PLATFORM_OCCAMY_INCLUDE_DIRS} ${SNRT_SOURCES} ${OCRT_DEVICE_SOURCES})
 target_compile_options(${TARGET_DEVICE} PUBLIC ${OCCAMY_DEVICE_COMPILE_OPTIONS})

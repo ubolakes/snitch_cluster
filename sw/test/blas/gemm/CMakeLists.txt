@@ -6,7 +6,18 @@ add_executable(${TARGET}
         main.c
         data.h
 )
-target_compile_definitions(${TARGET} PUBLIC SNITCH_CLUSTER) # Set Platform
+
+# Generate data header
+add_custom_command(
+        OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/data.h
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        DEPENDS datagen.py params.hjson
+        COMMAND PYTHONPATH=$ENV{PYTHONPATH} python ARGS datagen.py --cfg=params.hjson --section="" > data.h
+        COMMENT "Generating ${CMAKE_CURRENT_SOURCE_DIR}/data.h"
+)
+configure_file(params.hjson COPYONLY)
+
+    target_compile_definitions(${TARGET} PUBLIC SNITCH_CLUSTER) # Set Platform
 
 target_include_directories(${TARGET} PUBLIC ${COMMON_INCLUDE_DIRS} ${PLATFORM_SNC_INCLUDE_DIRS} ${SNRT_INCLUDE_DIRS})
 target_sources(${TARGET} PUBLIC ${COMMON_SOURCES} ${PLATFORM_SNC_SOURCES} ${SNRT_SOURCES})

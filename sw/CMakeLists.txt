@@ -8,6 +8,8 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 #set(CMAKE_TOOLCHAIN_FILE cmake/toolchain-llvm.cmake CACHE STRING "Toolchain to use")
 # use instead: -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-llvm.cmake
 
+add_subdirectory(scripts)
+
 add_subdirectory(external)
 add_subdirectory(platform)
 add_subdirectory(blas)
