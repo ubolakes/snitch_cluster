@@ -50,7 +50,7 @@ add_custom_command(
         DEPENDS device/datagen.py device/params.hjson
         COMMAND PYTHONPATH=$ENV{PYTHONPATH} python ARGS datagen.py --cfg=params.hjson --section="" > data.h
 )
-configure_file(device/params.hjson device/params.hjson COPYONLY)
+#configure_file(device/params.hjson ${CMAKE_CURRENT_BINARY_DIR}/device/params.hjson COPYONLY)
 
 target_include_directories(${TARGET_DEVICE} PUBLIC ${COMMON_INCLUDE_DIRS} ${PLATFORM_OCCAMY_INCLUDE_DIRS} ${SNRT_INCLUDE_DIRS} ${OCRT_DEVICE_INCLUDE_DIRS})
 target_sources(${TARGET_DEVICE} PUBLIC ${COMMON_SOURCES} ${PLATFORM_OCCAMY_INCLUDE_DIRS} ${SNRT_SOURCES} ${OCRT_DEVICE_SOURCES})

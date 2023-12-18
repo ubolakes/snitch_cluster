@@ -3,6 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 cmake_minimum_required(VERSION 3.13)
 project(occamy LANGUAGES C ASM)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_C_STANDARD 11)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 #set(CMAKE_TOOLCHAIN_FILE cmake/toolchain-llvm.cmake CACHE STRING "Toolchain to use")

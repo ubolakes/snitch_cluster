@@ -7,6 +7,7 @@
 #include <stdint.h>
 
 #include "sync_decls.h"
+#include "team_decls.h"
 
 //================================================================================
 // Mutex functions

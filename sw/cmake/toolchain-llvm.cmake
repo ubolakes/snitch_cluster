@@ -5,6 +5,7 @@
 # Based on SiFive example: https://github.com/five-embeddev/riscv-scratchpad/blob/master/cmake/cmake/riscv.cmake
 
 set(CMAKE_SYSTEM_NAME Generic)
+set(CMAKE_SYSTEM_VERSION 1)
 #set(CMAKE_SYSTEM_PROCESSOR rv64imafdc) # For Host
 #set(CMAKE_SYSTEM_PROCESSOR rv64imafdc) # For Device
 set(CMAKE_EXECUTABLE_SUFFIX ".elf")

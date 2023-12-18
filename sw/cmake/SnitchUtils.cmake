@@ -3,7 +3,7 @@ function(target_objdump TARGET)
     add_custom_command(TARGET ${TARGET} POST_BUILD
             BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/${TARGET}.d
             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-            COMMAND ${CMAKE_OBJDUMP} ARGS -D -d ${TARGET} > ${TARGET}.d
+            COMMAND ${CMAKE_OBJDUMP} ARGS -D -d ${CMAKE_CURRENT_BINARY_DIR}/${TARGET} > ${TARGET}.d
             COMMENT "Generating objdump ${CMAKE_CURRENT_BINARY_DIR}/${TARGET}.d"
     )
 endfunction()

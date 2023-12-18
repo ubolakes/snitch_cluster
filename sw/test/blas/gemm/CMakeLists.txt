@@ -15,7 +15,7 @@ add_custom_command(
         COMMAND PYTHONPATH=$ENV{PYTHONPATH} python ARGS datagen.py --cfg=params.hjson --section="" > data.h
         COMMENT "Generating ${CMAKE_CURRENT_SOURCE_DIR}/data.h"
 )
-configure_file(params.hjson params.hjson COPYONLY)
+#configure_file(params.hjson ${CMAKE_CURRENT_BINARY_DIR}/params.hjson COPYONLY)
 
 register_snitch_target(${TARGET} OBJDUMP ON DWARFDUMP ON)
 

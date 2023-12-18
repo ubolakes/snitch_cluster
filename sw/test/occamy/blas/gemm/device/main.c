@@ -13,12 +13,6 @@
 #include "gemm.h"
 #include "snrt.h"
 
-typedef float float_t;
-struct TcdmLayout {
-    float_t* A, B, C;
-};
-static_assert(sizeof(struct TcdmLayout) < 128*1024, "TCDM size is exceeded.");
-
 int main() {
     void *local_a, *local_b, *local_c;
     void *remote_a, *remote_b, *remote_c;
