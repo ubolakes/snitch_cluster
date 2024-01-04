@@ -18,7 +18,7 @@
   dir = !dir;                                                                  \
   const int first = dir ? begin : end - 1;                                     \
   const int last = dir ? end : begin;                                          \
-  for (i = first; dir ? i < last : i >= last; dir ? i += stride : i -= stride)
+  for (i = first; dir ? i < last : i >= last; i = dir ? i + stride : i - stride)
 
 
 const int l1_M   = 128;
@@ -37,7 +37,7 @@ typedef struct {
     double C[l1_M * l1_N];
 } TcdmLayout;
 
-static_assert(sizeof(TcdmLayout) < snrt_l1_allocator()->size, "TCDM size is exceeded for single buffering.");
+// static_assert(sizeof(TcdmLayout) < snrt_l1_allocator()->size, "TCDM size is exceeded for single buffering.");
 
 
 inline void gemm_oc_baseline(double alpha, double beta,
@@ -52,7 +52,7 @@ inline void gemm_oc_baseline(double alpha, double beta,
 
     // Setup layout for TCDM L1
     // For double buffering l1 is a size 2 array
-    TcdmLayout* const l1 = (TcdmLayout*) snrt_l1_allocator()->next;
+    TcdmLayout* const l1 = (TcdmLayout*) snrt_l1alloc(sizeof(TcdmLayout));
     bool l1Id_AB         = false;
     bool l1Id_C          = false;
 
@@ -74,10 +74,10 @@ inline void gemm_oc_baseline(double alpha, double beta,
 
     FOR_EACH(ib, pi, I - PI + pi +1, PI, i_dir) {
         FOR_EACH(jb, pj, J - PJ + pj +1, PJ, j_dir) {
-            const auto i = ib * l1_lda;
-            const auto j = jb * l1_ldb;
+            const int i = ib * l1_lda;
+            const int j = jb * l1_ldb;
 
-            auto* const l1_C = l1[l1Id_C].C;
+            double* const l1_C = l1[l1Id_C].C;
 
             // load next C
             snrt_dma_txid_t dma_tx_C = -1;
@@ -87,8 +87,8 @@ inline void gemm_oc_baseline(double alpha, double beta,
             }
 
             FOR_EACH(kb, 0, K, 1, k_dir) {
-                auto* const l1_A = l1[l1Id_AB].A;
-                auto* const l1_B = l1[l1Id_AB].B;
+                double* const l1_A = l1[l1Id_AB].A;
+                double* const l1_B = l1[l1Id_AB].B;
 
                 // load next A, B
                 if (snrt_is_dm_core()) {
@@ -127,6 +127,9 @@ inline void gemm_oc_baseline(double alpha, double beta,
     if (snrt_is_dm_core()) {
         snrt_cluster_hw_barrier(); // DMA core is one index ahead
     }
+
+    // Free memory once implemented by snrt
+    // snrt_l1free(l1);
 }
 
 inline void gemm_oc(precision_t prec, uint32_t expand, uint32_t setup_ssr,
