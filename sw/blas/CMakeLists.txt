@@ -10,6 +10,7 @@ set(BLAS_HEADERS
         gemm.h
         gemm_1c.h
         gemm_oc.h
+        gemm_tiled.h
 )
 
 set(BLAS_SOURCES
