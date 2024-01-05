@@ -4,7 +4,6 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include <assert.h>
 
 #include "snrt.h"
 #include "gemm_1c.h"
@@ -21,9 +20,9 @@
   for (i = first; dir ? i < last : i >= last; i = dir ? i + stride : i - stride)
 
 
-const int l1_M   = 128;
-const int l1_N   = 128;
-const int l1_K   = 128;
+const int l1_M   = 8; //128;
+const int l1_N   = 8; //128;
+const int l1_K   = 8; //128;
 const int l1_lda = l1_M;
 const int l1_ldb = l1_K;
 const int l1_ldc = l1_M;
@@ -37,13 +36,10 @@ typedef struct {
     double C[l1_M * l1_N];
 } TcdmLayout;
 
-// static_assert(sizeof(TcdmLayout) < snrt_l1_allocator()->size, "TCDM size is exceeded for single buffering.");
-
-
-inline void gemm_oc_baseline(double alpha, double beta,
-                             uint32_t m, uint32_t n, uint32_t k,
-                             void* A, void* B, void* C,
-                             uint32_t lda, uint32_t ldb, uint32_t ldc) {
+void gemm_oc_baseline(double alpha, double beta,
+                      uint32_t m, uint32_t n, uint32_t k,
+                      void* A, void* B, void* C,
+                      uint32_t lda, uint32_t ldb, uint32_t ldc) {
     /**
     * Problem is double buffered in L1. The buffer that is used is toggled at each iteration.
     * The DMA cores are one index step ahead so they load the data in advance into the buffer that will be used.
@@ -52,26 +48,30 @@ inline void gemm_oc_baseline(double alpha, double beta,
 
     // Setup layout for TCDM L1
     // For double buffering l1 is a size 2 array
-    TcdmLayout* const l1 = (TcdmLayout*) snrt_l1alloc(sizeof(TcdmLayout));
+    TcdmLayout* const l1 = (TcdmLayout*) snrt_l1alloc(2 * sizeof(TcdmLayout));
     bool l1Id_AB         = false;
     bool l1Id_C          = false;
 
     // Initialize indices
-    const int I  = m, J  = n, K = k;
-    const int PI = 2, PJ = 2;
+    const int I = m, J = n, K = k;
+
+    const int PI = snrt_cluster_num(), PJ = 1;
     const int P  = PI * PJ;
 
     const int p  = snrt_cluster_idx();
-    const int pi = p / PI;
-    const int pj = p % PI;
+    const int pi = 0; // p / PI;
+    const int pj = p; // p % PI;
 
-    int ib     = 0, jb        = 0, kb        = 0;
+    int ib, jb, kb;
     bool i_dir = false, j_dir = false, k_dir = false;
 
     if (snrt_is_compute_core()) {
         snrt_cluster_hw_barrier(); // DMA core is one index ahead
     }
 
+
+    // TODO: check that no out of bound accesses are made
+    // TODO: check that dma transfers are finished before the data is used, use a barrier
     FOR_EACH(ib, pi, I - PI + pi +1, PI, i_dir) {
         FOR_EACH(jb, pj, J - PJ + pj +1, PJ, j_dir) {
             const int i = ib * l1_lda;
@@ -84,7 +84,11 @@ inline void gemm_oc_baseline(double alpha, double beta,
             if (snrt_is_dm_core()) {
                 dma_tx_C = snrt_dma_load_2d_tile(l1_C, c, ib, jb, l1_M, l1_N, ldc, FP64);
                 // TODO: implement piecewise transfer of C in inner loop
+                snrt_dma_wait_all(); // TODO: only wait here the first time
             }
+
+            // TODO: dma wait needs a barrier before compute cores can use the data
+            snrt_cluster_hw_barrier();
 
             FOR_EACH(kb, 0, K, 1, k_dir) {
                 double* const l1_A = l1[l1Id_AB].A;
@@ -107,17 +111,18 @@ inline void gemm_oc_baseline(double alpha, double beta,
                 snrt_cluster_hw_barrier();
             }
 
-            if (snrt_is_dm_core()) {
-                snrt_dma_wait(dma_tx_C);
-            }
+            // if (snrt_is_dm_core()) {
+            //     snrt_dma_wait(dma_tx_C); // TODO: don't wait the first time
+            // }
 
             l1Id_C = !l1Id_C; // switch buffers
             snrt_cluster_hw_barrier();
 
-            if(snrt_is_dm_core()) { // store C
+            if (snrt_is_dm_core()) {
+                // store C
                 dma_tx_C = snrt_dma_store_2d_tile(c, l1_C,
-                                       ib, jb,
-                                       l1_M, l1_N, ldc, FP64);
+                                                  ib, jb,
+                                                  l1_M, l1_N, ldc, FP64);
 
                 snrt_dma_wait(dma_tx_C);
             }
