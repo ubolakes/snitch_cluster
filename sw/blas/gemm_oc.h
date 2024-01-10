@@ -23,9 +23,9 @@
 const int l1_M   = 8; //128;
 const int l1_N   = 8; //128;
 const int l1_K   = 8; //128;
-const int l1_lda = l1_M;
-const int l1_ldb = l1_K;
-const int l1_ldc = l1_M;
+const int l1_lda = l1_K;
+const int l1_ldb = l1_N;
+const int l1_ldc = l1_N;
 
 /**
  * \brief Maps the layout of the TCDM. May be double buffered.
@@ -35,6 +35,27 @@ typedef struct {
     double B[l1_K * l1_N];
     double C[l1_M * l1_N];
 } TcdmLayout;
+
+void gemm_kernel(double alpha, double beta,
+                 uint32_t M, uint32_t N, uint32_t K,
+                 double* const A, double* const B, double* const C,
+                 int lda, int ldb, int ldc) {
+    const int P = snrt_cluster_core_num();
+    const int p = snrt_cluster_core_idx();
+
+    for (uint32_t i = p; i < M; i += P) {
+        for (uint32_t j = 0; j < N; j++) {
+            uint32_t cIdx      = i * ldc + j; // C[i][j]
+            register double c0 = beta * C[cIdx];
+            for (uint32_t k = 0; k < K; k++) {
+                uint32_t aIdx = i * lda + k; // A[i][k]
+                uint32_t bIdx = k * ldb + j; // B[k][j]
+                c0 += A[aIdx] * B[bIdx];
+            }
+            C[cIdx] = c0;
+        }
+    }
+}
 
 void gemm_oc_baseline(double alpha, double beta,
                       uint32_t m, uint32_t n, uint32_t k,
@@ -59,8 +80,8 @@ void gemm_oc_baseline(double alpha, double beta,
     const int P  = PI * PJ;
 
     const int p  = snrt_cluster_idx();
-    const int pi = 0; // p / PI;
-    const int pj = p; // p % PI;
+    const int pi = 0; // p / PJ;
+    const int pj = p; // p % PJ;
 
     int ib, jb, kb;
     bool i_dir = false, j_dir = false, k_dir = false;
@@ -72,8 +93,16 @@ void gemm_oc_baseline(double alpha, double beta,
 
     // TODO: check that no out of bound accesses are made
     // TODO: check that dma transfers are finished before the data is used, use a barrier
-    FOR_EACH(ib, pi, I - PI + pi +1, PI, i_dir) {
-        FOR_EACH(jb, pj, J - PJ + pj +1, PJ, j_dir) {
+    // FOR_EACH(ib, pi, I - PI + pi +1, PI, i_dir) {
+    i_dir             = !i_dir;
+    const int i_first = i_dir ? pi : I - PI + pi + 1 - 1;
+    const int i_last  = i_dir ? I - PI + pi + 1 : pi;
+    for (ib = i_first; i_dir ? ib < i_last : ib >= i_last; ib = i_dir ? ib + PI : ib - PI) {
+        // FOR_EACH(jb, pj, J - PJ + pj +1, PJ, j_dir) {
+        j_dir             = !j_dir;
+        const int j_first = j_dir ? pj : J - PJ + pj + 1 - 1;
+        const int j_last  = j_dir ? J - PJ + pj + 1 : pj;
+        for (jb = j_first; j_dir ? jb < j_last : jb >= j_last; jb = j_dir ? jb + PJ : jb - PJ) {
             const int i = ib * l1_lda;
             const int j = jb * l1_ldb;
 
@@ -90,7 +119,11 @@ void gemm_oc_baseline(double alpha, double beta,
             // TODO: dma wait needs a barrier before compute cores can use the data
             snrt_cluster_hw_barrier();
 
-            FOR_EACH(kb, 0, K, 1, k_dir) {
+            // FOR_EACH(kb, 0, K, 1, k_dir) {
+            k_dir             = !k_dir;
+            const int k_first = k_dir ? 0 : K - 1;
+            const int k_last  = k_dir ? K : 0;
+            for (kb = k_first; k_dir ? kb < k_last : kb >= k_last; kb = k_dir ? kb + 1 : kb - 1) {
                 double* const l1_A = l1[l1Id_AB].A;
                 double* const l1_B = l1[l1Id_AB].B;
 
@@ -102,9 +135,11 @@ void gemm_oc_baseline(double alpha, double beta,
                     snrt_dma_wait_all();
                 } else {
                     // solve block already in l1, parallelize inside each cluster
-                    gemm(FP64, 0, true, false, false,
-                         m, n, k, alpha,
-                         l1_A, l1_lda, l1_B, l1_ldb, beta, l1_C, l1_ldc);
+                    gemm_kernel(alpha, beta, l1_M, l1_N, l1_K, l1_A, l1_B, l1_C, l1_lda, l1_ldb, l1_ldc);
+
+                    // gemm(FP64, 0, true, false, false,
+                    //      m, n, k, alpha,
+                    //      l1_A, l1_lda, l1_B, l1_ldb, beta, l1_C, l1_ldc);
                 }
 
                 l1Id_AB = !l1Id_AB; // switch buffers
@@ -141,5 +176,5 @@ inline void gemm_oc(precision_t prec, uint32_t expand, uint32_t setup_ssr,
                     uint32_t transa, uint32_t transb, uint32_t m, uint32_t n,
                     uint32_t k, double alpha, void* a, uint32_t lda, void* b,
                     uint32_t ldb, uint32_t beta, void* c, uint32_t ldc) {
-    gemm_oc_baseline(alpha, beta, m, n, k, a, b, c, lda, ldb, ldc);
+    gemm_kernel(alpha, beta, m, n, k, a, b, c, lda, ldb, ldc);
 }
