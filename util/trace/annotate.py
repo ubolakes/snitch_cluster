@@ -76,6 +76,12 @@ parser.add_argument(
     action='store_true',
     help='Preserve simulation time in trace')
 parser.add_argument(
+    '--is-objdump',
+    action='store_true',
+    default=False,
+    help='Enable this to annotate a .dump file instead of a trace.'
+)
+parser.add_argument(
     '-q',
     '--quiet',
     action='store_true',
@@ -90,6 +96,7 @@ diff = args.diff
 addr2line = args.addr2line
 quiet = args.quiet
 keep_time = args.keep_time
+is_objdump = args.is_objdump
 
 if not quiet:
     print('elf:', elf_file, file=sys.stderr)
@@ -194,13 +201,13 @@ with open(trace, 'r') as f:
     for lino, line in enumerate(trace_lines):
 
         # Split trace line in columns
-        cols = re.split(r" +", line.strip())
+        cols = re.split(r":" if is_objdump else r" +", line.strip())
         # Get simulation time from first column
-        time = cols[0]
+        time = 0 if is_objdump else cols[0]
         # RTL traces might not contain a PC on each line
         try:
             # Get address from PC column
-            addr = cols[3]
+            addr = cols[0 if is_objdump else 3]
             # Find index of first character in PC
             if trace_start_col < 0:
                 trace_start_col = line.find(addr)
