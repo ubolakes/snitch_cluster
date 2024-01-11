@@ -14,8 +14,26 @@
 #include "sync_decls.h"
 #include "team_decls.h"
 
+#include "occamy_defs.h"
+
+inline void __attribute__((const)) ocrt_compute_thread_num(uint32_t* tnum) {
+    tnum[0] = SNRT_CLUSTER_CORE_NUM - SNRT_CLUSTER_DM_CORE_NUM;
+    tnum[1] = N_CLUSTERS_PER_QUAD;
+    tnum[2] = N_QUADS;
+}
+
+inline void __attribute__((const)) ocrt_thread_idx(uint32_t* tid) {
+    tid[0] = snrt_global_core_idx() % SNRT_CLUSTER_CORE_NUM;
+    tid[1] = (snrt_global_core_idx() / SNRT_CLUSTER_CORE_NUM) % N_CLUSTERS_PER_QUAD;
+    tid[2] = (snrt_global_core_idx() / SNRT_CLUSTER_CORE_NUM) / N_CLUSTERS_PER_QUAD;
+}
+
 inline uint32_t __attribute__((const)) snrt_quadrant_idx() {
     return snrt_cluster_idx() / N_CLUSTERS_PER_QUAD;
+}
+
+inline uint32_t __attribute__((const)) snrt_quadrant_num() {
+    return N_QUADS;
 }
 
 inline void post_wakeup_cl() { snrt_int_clr_mcip(); }

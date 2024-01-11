@@ -11,6 +11,7 @@ set(PLATFORM_OCCAMY_HEADERS
         generated/fpu_util.h
         generated/occamy_base_addr.h
         generated/occamy_cfg.h
+        generated/occamy_defs.h
         generated/occamy_soc_ctrl.h
         generated/snitch_cluster_peripheral.h
         generated/snitch_hbm_xbar_peripheral.h

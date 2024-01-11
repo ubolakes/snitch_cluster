@@ -5,7 +5,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "snrt.h"
+#include "ocrt.h"
 #include "gemm_1c.h"
 
 /**
@@ -79,14 +79,15 @@ void gemm_oc_baseline(double alpha, double beta,
     bool l1Id_C          = false;
 
     // Initialize indices
-    const int I = m, J = n, K = k;
+    const uint32_t I = m, J = n, K = k;
 
-    const int PI = snrt_cluster_num(), PJ = 1;
-    const int P  = PI * PJ;
+    uint32_t p[3], P[3];
+    ocrt_thread_idx(p);
+    ocrt_compute_thread_num(P);
 
-    const int p  = snrt_cluster_idx();
-    const int pi = 0; // p / PJ;
-    const int pj = p; // p % PJ;
+    const uint32_t PI = P[1], PJ = 1;
+    const uint32_t pi = p[1] / PJ;
+    const uint32_t pj = p[1] % PJ;
 
     int ib, jb, kb;
     bool i_dir = false, j_dir = false, k_dir = false;

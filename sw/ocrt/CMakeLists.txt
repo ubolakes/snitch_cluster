@@ -22,7 +22,6 @@ list(APPEND OCRT_HOST_HEADERS ${OCRT_GLOBAL_HEADERS})
 
 set(OCRT_DEVICE_HEADERS
         device/ocrt.h
-        device/occamy_defs.h
         device/occamy_device.h
         device/occamy_device_decls.h
         device/occamy_memory.h

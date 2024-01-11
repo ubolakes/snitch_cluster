@@ -5,13 +5,10 @@
 // Author: Tim Fischer <fischeti@iis.ee.ethz.ch>
 //         Luca Colagrande <colluca@iis.ee.ethz.ch>
 
-#include <math.h>
-#include <stdbool.h>
-#include <stdint.h>
+#include "snrt.h"
 
 #include "data.h"
 #include "gemm.h"
-#include "snrt.h"
 
 int main() {
     const bool setup_ssr = true;
