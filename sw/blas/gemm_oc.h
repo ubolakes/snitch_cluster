@@ -10,36 +10,41 @@
 
 /**
  * \brief Implements a reversing loop for an index range
- * \param end Must be exact, for correct reversing behavior
+ * \param begin Beginning of the range
+ * \param end End of the range
  * \param dir Sets the direction of traversal. True: loop starts at begin.
+ * \details i_end_floor will contain the exact end with the stride, s.t. the reversed loop starts at the correct index.
  */
-#define FOR_EACH(i, begin, end, stride, dir)                                   \
-  dir = !dir;                                                                  \
-  const int first = dir ? begin : end - 1;                                     \
-  const int last = dir ? end : begin;                                          \
-  for (i = first; dir ? i < last : i >= last; i = dir ? i + stride : i - stride)
+#define FOR_EACH(i, begin, end, stride, dir)                                                                           \
+  dir = !dir;                                                                                                          \
+  const int i##_end_floor = ((end - begin + stride - 1) / stride) * stride - stride + begin;                           \
+  const int i##_first = dir ? begin : i##_end_floor;                                                                   \
+  const int i##_last = dir ? i##_end_floor : begin;                                                                    \
+  for (i = i##_first; dir ? i <= i##_last : i >= i##_last; i = dir ? i + stride : i - stride)
 
-
-const int l1_M   = 8; //128;
-const int l1_N   = 8; //128;
-const int l1_K   = 8; //128;
-const int l1_lda = l1_K;
-const int l1_ldb = l1_N;
-const int l1_ldc = l1_N;
+#define L1_M 8 //128;
+#define L1_N 8 //128;
+#define L1_K 8 //128;
+#define L1_LDA L1_K
+#define L1_LDB L1_N
+#define L1_LDC L1_N
 
 /**
  * \brief Maps the layout of the TCDM. May be double buffered.
  */
 typedef struct {
-    double A[l1_M * l1_K];
-    double B[l1_K * l1_N];
-    double C[l1_M * l1_N];
+    double A[L1_M * L1_K];
+    double B[L1_K * L1_N];
+    double C[L1_M * L1_N];
 } TcdmLayout;
 
-void gemm_kernel(double alpha, double beta,
-                 uint32_t M, uint32_t N, uint32_t K,
-                 double* const A, double* const B, double* const C,
-                 int lda, int ldb, int ldc) {
+/**
+ * \brief Each cluster performs a GEMM for A, B, C inside each TCDM
+ */
+void gemm_cluster_kernel(double alpha, double beta,
+                         uint32_t M, uint32_t N, uint32_t K,
+                         double* const A, double* const B, double* const C,
+                         int lda, int ldb, int ldc) {
     const int P = snrt_cluster_core_num();
     const int p = snrt_cluster_core_idx();
 
@@ -93,49 +98,35 @@ void gemm_oc_baseline(double alpha, double beta,
 
     // TODO: check that no out of bound accesses are made
     // TODO: check that dma transfers are finished before the data is used, use a barrier
-    // FOR_EACH(ib, pi, I - PI + pi +1, PI, i_dir) {
-    i_dir             = !i_dir;
-    const int i_first = i_dir ? pi : I - PI + pi + 1 - 1;
-    const int i_last  = i_dir ? I - PI + pi + 1 : pi;
-    for (ib = i_first; i_dir ? ib < i_last : ib >= i_last; ib = i_dir ? ib + PI : ib - PI) {
-        // FOR_EACH(jb, pj, J - PJ + pj +1, PJ, j_dir) {
-        j_dir             = !j_dir;
-        const int j_first = j_dir ? pj : J - PJ + pj + 1 - 1;
-        const int j_last  = j_dir ? J - PJ + pj + 1 : pj;
-        for (jb = j_first; j_dir ? jb < j_last : jb >= j_last; jb = j_dir ? jb + PJ : jb - PJ) {
-            const int i = ib * l1_lda;
-            const int j = jb * l1_ldb;
+    FOR_EACH(ib, pi, I / L1_M, PI, i_dir) {
+        FOR_EACH(jb, pj, J / L1_N, PJ, j_dir) {
+            const int i = ib * L1_LDA;
+            const int j = jb * L1_LDB;
 
             double* const l1_C = l1[l1Id_C].C;
 
+            snrt_dma_txid_t dma_txid_load_C  = -1;
+            snrt_dma_txid_t dma_txid_store_C = -1;
+
             // load next C
-            snrt_dma_txid_t dma_tx_C = -1;
             if (snrt_is_dm_core()) {
-                dma_tx_C = snrt_dma_load_2d_tile(l1_C, c, ib, jb, l1_M, l1_N, ldc, FP64);
                 // TODO: implement piecewise transfer of C in inner loop
-                snrt_dma_wait_all(); // TODO: only wait here the first time
+                snrt_dma_load_2d_tile(l1_C, c, ib, jb, L1_M, L1_N, ldc, FP64);
             }
 
-            // TODO: dma wait needs a barrier before compute cores can use the data
-            snrt_cluster_hw_barrier();
-
-            // FOR_EACH(kb, 0, K, 1, k_dir) {
-            k_dir             = !k_dir;
-            const int k_first = k_dir ? 0 : K - 1;
-            const int k_last  = k_dir ? K : 0;
-            for (kb = k_first; k_dir ? kb < k_last : kb >= k_last; kb = k_dir ? kb + 1 : kb - 1) {
+            FOR_EACH(kb, 0, K / L1_K, 1, k_dir) {
                 double* const l1_A = l1[l1Id_AB].A;
                 double* const l1_B = l1[l1Id_AB].B;
 
                 // load next A, B
                 if (snrt_is_dm_core()) {
-                    snrt_dma_load_2d_tile(l1_A, a, ib, kb, l1_M, l1_K, lda, FP64);
-                    snrt_dma_load_2d_tile(l1_B, b, kb, jb, l1_K, l1_N, ldb, FP64);
+                    snrt_dma_load_2d_tile(l1_A, a, ib, kb, L1_M, L1_K, lda, FP64);
+                    snrt_dma_load_2d_tile(l1_B, b, kb, jb, L1_K, L1_N, ldb, FP64);
 
                     snrt_dma_wait_all();
                 } else {
                     // solve block already in l1, parallelize inside each cluster
-                    gemm_kernel(alpha, beta, l1_M, l1_N, l1_K, l1_A, l1_B, l1_C, l1_lda, l1_ldb, l1_ldc);
+                    gemm_cluster_kernel(alpha, beta, L1_M, L1_N, L1_K, l1_A, l1_B, l1_C, L1_LDA, L1_LDB, L1_LDC);
 
                     // gemm(FP64, 0, true, false, false,
                     //      m, n, k, alpha,
@@ -146,20 +137,11 @@ void gemm_oc_baseline(double alpha, double beta,
                 snrt_cluster_hw_barrier();
             }
 
-            // if (snrt_is_dm_core()) {
-            //     snrt_dma_wait(dma_tx_C); // TODO: don't wait the first time
-            // }
-
             l1Id_C = !l1Id_C; // switch buffers
-            snrt_cluster_hw_barrier();
 
             if (snrt_is_dm_core()) {
                 // store C
-                dma_tx_C = snrt_dma_store_2d_tile(c, l1_C,
-                                                  ib, jb,
-                                                  l1_M, l1_N, ldc, FP64);
-
-                snrt_dma_wait(dma_tx_C);
+                snrt_dma_store_2d_tile(c, l1_C, ib, jb, L1_M, L1_N, ldc, FP64);
             }
         }
     }
@@ -176,5 +158,8 @@ inline void gemm_oc(precision_t prec, uint32_t expand, uint32_t setup_ssr,
                     uint32_t transa, uint32_t transb, uint32_t m, uint32_t n,
                     uint32_t k, double alpha, void* a, uint32_t lda, void* b,
                     uint32_t ldb, uint32_t beta, void* c, uint32_t ldc) {
-    gemm_kernel(alpha, beta, m, n, k, a, b, c, lda, ldb, ldc);
+    gemm_cluster_kernel(alpha, beta, m, n, k, a, b, c, lda, ldb, ldc);
+    snrt_cluster_hw_barrier();
+
+    // gemm_oc_baseline(alpha, beta, m, n, k, a, b, c, lda, ldb, ldc);
 }
