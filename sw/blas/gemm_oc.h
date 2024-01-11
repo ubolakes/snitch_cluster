@@ -45,10 +45,11 @@ void gemm_cluster_kernel(double alpha, double beta,
                          uint32_t M, uint32_t N, uint32_t K,
                          double* const A, double* const B, double* const C,
                          int lda, int ldb, int ldc) {
-    const int P = snrt_cluster_core_num();
-    const int p = snrt_cluster_core_idx();
+    uint32_t p[3], P[3];
+    ocrt_thread_idx(p);
+    ocrt_compute_thread_num(P);
 
-    for (uint32_t i = p; i < M; i += P) {
+    for (uint32_t i = p[0]; i < M; i += P[0]) {
         for (uint32_t j = 0; j < N; j++) {
             uint32_t cIdx      = i * ldc + j; // C[i][j]
             register double c0 = beta * C[cIdx];
@@ -81,7 +82,8 @@ void gemm_oc_baseline(double alpha, double beta,
     // Initialize indices
     const uint32_t I = m, J = n, K = k;
 
-    uint32_t p[3], P[3];
+    volatile uint32_t p[3] = {0,0,0};
+    volatile uint32_t P[3] = {0,0,0};
     ocrt_thread_idx(p);
     ocrt_compute_thread_num(P);
 
@@ -160,8 +162,9 @@ inline void gemm_oc(precision_t prec, uint32_t expand, uint32_t setup_ssr,
                     uint32_t transa, uint32_t transb, uint32_t m, uint32_t n,
                     uint32_t k, double alpha, void* a, uint32_t lda, void* b,
                     uint32_t ldb, uint32_t beta, void* c, uint32_t ldc) {
-    gemm_cluster_kernel(alpha, beta, m, n, k, a, b, c, lda, ldb, ldc);
-    snrt_cluster_hw_barrier();
+    // gemm_cluster_kernel(alpha, beta, m, n, k, a, b, c, lda, ldb, ldc);
+    // snrt_fpu_fence();
+    // snrt_cluster_hw_barrier();
 
-    // gemm_oc_baseline(alpha, beta, m, n, k, a, b, c, lda, ldb, ldc);
+    gemm_oc_baseline(alpha, beta, m, n, k, a, b, c, lda, ldb, ldc);
 }
