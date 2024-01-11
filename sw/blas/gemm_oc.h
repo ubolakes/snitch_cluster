@@ -132,6 +132,7 @@ void gemm_oc_baseline(double alpha, double beta,
                     // gemm(FP64, 0, true, false, false,
                     //      m, n, k, alpha,
                     //      l1_A, l1_lda, l1_B, l1_ldb, beta, l1_C, l1_ldc);
+                    snrt_fpu_fence();
                 }
 
                 l1Id_AB = !l1Id_AB; // switch buffers
