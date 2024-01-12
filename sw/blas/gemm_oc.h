@@ -209,8 +209,8 @@ void gemm_oc_baseline(double alpha, double beta,
 
             l1Id_C = !l1Id_C; // switch buffers
             jb_prev = jb;
+            ib_prev = ib;
         }
-        ib_prev = ib;
     }
 
     if (snrt_is_dm_core()) {
