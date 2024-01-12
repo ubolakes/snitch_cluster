@@ -7,8 +7,14 @@
 
 #include "snrt.h"
 
-#include "data.h"
 #include "gemm.h"
+#include "data.h"
+
+#include "dump.h"
+NAMED_DUMP(uint32_t, err, 0x7)
+
+#define BIST
+#include "data.h"
 
 int main() {
     const bool setup_ssr = true;
@@ -23,7 +29,26 @@ int main() {
 
     uint32_t end_cycle = snrt_mcycle();
 
-    snrt_cluster_hw_barrier();
+    snrt_fpu_fence();
+    snrt_global_barrier();
+
+#ifdef BIST_COMPUTE
+    uint32_t errors = M * N;
+
+    if (snrt_global_core_idx() == 0) {
+        for (uint32_t m = 0; m < M; m++) {
+            for (uint32_t n = 0; n < N; n++) {
+                uint32_t idx = m * N + n;
+                if (fabs(result[idx] - c[idx]) < 0.001)
+                    errors--;
+            }
+        }
+        // printf("%d/%d Errors\n", errors, M * N);
+        dump_err(errors);
+    }
+
+    return errors;
+#endif
 
     return 0;
 }
