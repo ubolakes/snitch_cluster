@@ -14,12 +14,12 @@ int main() {
     const bool setup_ssr = true;
     uint32_t start_cycle = snrt_mcycle();
 
-    volatile uint32_t lda = K;
-    volatile uint32_t ldb = N;
-    volatile uint32_t ldc = N;
+    uint32_t lda = K;
+    uint32_t ldb = N;
+    uint32_t ldc = N;
 
     gemm_oc(dtype_size, expand, setup_ssr, TA, TB, M, N, K, ALPHA,
-            a, lda, b, ldb, BETA, c,  ldc);
+            a, lda, b, ldb, 1, c, ldc);
 
     uint32_t end_cycle = snrt_mcycle();
 

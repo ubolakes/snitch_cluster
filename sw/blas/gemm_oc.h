@@ -82,7 +82,7 @@ void gemm_cluster_kernel(double alpha, double beta,
 
 void gemm_oc_baseline(double alpha, double beta,
                       uint32_t m, uint32_t n, uint32_t k,
-                      void* A, void* B, void* C,
+                      double* A, double* B, double* C,
                       uint32_t lda, uint32_t ldb, uint32_t ldc) {
     /**
     * Problem is double buffered in L1. The buffer that is used is toggled at each iteration.
@@ -138,7 +138,7 @@ void gemm_oc_baseline(double alpha, double beta,
             // load next C
             if (snrt_is_dm_core()) {
                 // TODO: implement piecewise transfer of C in inner loop
-                snrt_dma_load_2d_tile(l1_C, c, ib, jb, L1_M, L1_N, ldc, FP64);
+                snrt_dma_load_2d_tile(l1_C, C, ib, jb, L1_M, L1_N, ldc, FP64);
             }
 
             FOR_EACH(kb, 0, K / L1_K, 1, k_dir) {
@@ -147,8 +147,8 @@ void gemm_oc_baseline(double alpha, double beta,
 
                 // load next A, B
                 if (snrt_is_dm_core()) {
-                    snrt_dma_load_2d_tile(l1_A, a, ib, kb, L1_M, L1_K, lda, FP64);
-                    snrt_dma_load_2d_tile(l1_B, b, kb, jb, L1_K, L1_N, ldb, FP64);
+                    snrt_dma_load_2d_tile(l1_A, A, ib, kb, L1_M, L1_K, lda, FP64);
+                    snrt_dma_load_2d_tile(l1_B, B, kb, jb, L1_K, L1_N, ldb, FP64);
 
                     snrt_dma_wait_all();
                 } else {
@@ -168,7 +168,7 @@ void gemm_oc_baseline(double alpha, double beta,
 
             if (snrt_is_dm_core()) {
                 // store C
-                snrt_dma_store_2d_tile(c, l1_C, ib, jb, L1_M, L1_N, ldc, FP64);
+                snrt_dma_store_2d_tile(C, l1_C, ib, jb, L1_M, L1_N, ldc, FP64);
             }
         }
     }
