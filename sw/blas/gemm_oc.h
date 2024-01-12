@@ -24,14 +24,17 @@ NAMED_DUMP(double, c, 0xc)
  * \param begin Beginning of the range
  * \param end End of the range
  * \param dir Sets the direction of traversal. True: loop starts at begin.
+ * \param i_prev Set the previous index to the first index, must update this manually at the end of the loop.
  * \details i_end_floor will contain the exact end with the stride, s.t. the reversed loop starts at the correct index.
  */
-#define FOR_EACH(i, begin, end, stride, dir)                                                                           \
-  dir = !dir;                                                                                                          \
-  const int i##_end_floor = ((end - begin + stride - 1) / stride) * stride - stride + begin;                           \
-  const int i##_first = dir ? begin : i##_end_floor;                                                                   \
-  const int i##_last = dir ? i##_end_floor : begin;                                                                    \
-  for (i = i##_first; dir ? i <= i##_last : i >= i##_last; i = dir ? i + stride : i - stride)
+#define FOR_EACH(i, begin, end, stride, dir, i_prev)                                                                   \
+    dir = !dir;                                                                                                        \
+    const int i##_end_floor = ((end - begin + stride - 1) / stride) * stride - stride + begin;                         \
+    const int i##_first     = dir ? begin : i##_end_floor;                                                             \
+    const int i##_last      = dir ? i##_end_floor : begin;                                                             \
+    i                       = i##_first;                                                                               \
+    i_prev                  = i;                                                                                       \
+    for (; dir ? i <= i##_last : i >= i##_last; i = dir ? i + stride : i - stride)
 
 #define L1_M 8 //128;
 #define L1_N 8 //128;
@@ -48,6 +51,7 @@ typedef struct {
     double B[L1_K * L1_N];
     double C[L1_M * L1_N];
 } TcdmLayout;
+
 NAMED_DUMP(TcdmLayout*, l1, 0x8)
 
 /**
@@ -63,7 +67,7 @@ void gemm_cluster_kernel(double alpha, double beta,
 
     for (uint32_t i = p[0]; i < M; i += P[0]) {
         for (uint32_t j = 0; j < N; j++) {
-            uint32_t cIdx      = i * ldc + j; // C[i][j]
+            uint32_t cIdx = i * ldc + j; // C[i][j]
             // dump_cIdx(cIdx);
             // dump_c(C[cIdx]);
             register double c0 = beta * C[cIdx];
@@ -103,14 +107,14 @@ void gemm_oc_baseline(double alpha, double beta,
     // dump_l1(l1);
 
 
-    bool l1Id_AB         = false;
-    bool l1Id_C          = false;
+    bool l1Id_AB = false;
+    bool l1Id_C  = false;
 
     // Initialize indices
     const uint32_t I = m, J = n, K = k;
 
-    volatile uint32_t p[3] = {0,0,0};
-    volatile uint32_t P[3] = {0,0,0};
+    volatile uint32_t p[3] = {0, 0, 0};
+    volatile uint32_t P[3] = {0, 0, 0};
     ocrt_thread_idx(p);
     ocrt_compute_thread_num(P);
 
@@ -120,44 +124,37 @@ void gemm_oc_baseline(double alpha, double beta,
 
     int ib, jb, kb;
     int ib_prev, jb_prev, kb_prev;
-    volatile int ib_cnt = 0, jb_cnt    = 0, kb_cnt    = 0;
-    bool i_dir          = false, j_dir = false, k_dir = false;
+    bool ib_dir = false, jb_dir = false, kb_dir = false;
+
+    bool storeC = false;
+
+    // Debug
+    volatile int ib_cnt = 0, jb_cnt = 0, kb_cnt = 0;
 
     if (snrt_is_compute_core()) {
         snrt_cluster_hw_barrier(); // DMA core is one index ahead
     }
 
-    volatile bool storeC = false;
-
-
-    // TODO: check that no out of bound accesses are made
-    // TODO: check that dma transfers are finished before the data is used, use a barrier
-    // FOR_EACH(ib, pi, I / L1_M, PI, i_dir) {
-    i_dir                  = !i_dir;
+    // FOR_EACH(ib, pi, I / L1_M, PI, ib_dir, ib_prev) {
+    ib_dir                 = !ib_dir;
     const int ib_end_floor = ((I / 8 - pi + PI - 1) / PI) * PI - PI + pi;
-    const int ib_first     = i_dir ? pi : ib_end_floor;
-    const int ib_last      = i_dir ? ib_end_floor : pi;
-    ib = ib_first;
-    ib_prev = ib;
-    for (; i_dir ? ib <= ib_last : ib >= ib_last; ib = i_dir ? ib + PI : ib - PI) {
+    const int ib_first     = ib_dir ? pi : ib_end_floor;
+    const int ib_last      = ib_dir ? ib_end_floor : pi;
+    ib                     = ib_first;
+    ib_prev                = ib;
+    for (; ib_dir ? ib <= ib_last : ib >= ib_last; ib = ib_dir ? ib + PI : ib - PI) {
         ib_cnt += ib;
-        // FOR_EACH(jb, pj, J / L1_N, PJ, j_dir) {
-        j_dir                  = !j_dir;
+        // FOR_EACH(jb, pj, J / L1_N, PJ, jb_dir, jb_prev) {
+        jb_dir                 = !jb_dir;
         const int jb_end_floor = ((J / 8 - pj + PJ - 1) / PJ) * PJ - PJ + pj;
-        const int jb_first     = j_dir ? pj : jb_end_floor;
-        const int jb_last      = j_dir ? jb_end_floor : pj;
-        jb = jb_first;
-        jb_prev = jb;
-        for (; j_dir ? jb <= jb_last : jb >= jb_last; jb = j_dir ? jb + PJ : jb - PJ) {
+        const int jb_first     = jb_dir ? pj : jb_end_floor;
+        const int jb_last      = jb_dir ? jb_end_floor : pj;
+        jb                     = jb_first;
+        jb_prev                = jb;
+        for (; jb_dir ? jb <= jb_last : jb >= jb_last; jb = jb_dir ? jb + PJ : jb - PJ) {
             jb_cnt += jb;
-            const int i = ib * L1_LDA;
-            const int j = jb * L1_LDB;
 
             double* const l1_C = l1[l1Id_C].C;
-
-            snrt_dma_txid_t dma_txid_load_C  = -1;
-            snrt_dma_txid_t dma_txid_store_C = -1;
-
 
             if (snrt_is_dm_core()) {
                 dump_ib(ib);
@@ -167,21 +164,20 @@ void gemm_oc_baseline(double alpha, double beta,
                     storeC = true;
             }
 
-            // FOR_EACH(kb, 0, K / L1_K, 1, k_dir) {
-            k_dir                  = !k_dir;
+            // FOR_EACH(kb, 0, K / L1_K, 1, kb_dir, kb_prev) {
+            kb_dir                 = !kb_dir;
             const int kb_end_floor = ((K / L1_K - 0 + 1 - 1) / 1) * 1 - 1 + 0;
-            const int kb_first     = k_dir ? 0 : kb_end_floor;
-            const int kb_last      = k_dir ? kb_end_floor : 0;
-            kb = kb_first;
-            kb_prev = kb;
-            for (; k_dir ? kb <= kb_last : kb >= kb_last; kb = k_dir ? kb + 1 : kb - 1) {
+            const int kb_first     = kb_dir ? 0 : kb_end_floor;
+            const int kb_last      = kb_dir ? kb_end_floor : 0;
+            kb                     = kb_first;
+            kb_prev                = kb;
+            for (; kb_dir ? kb <= kb_last : kb >= kb_last; kb = kb_dir ? kb + 1 : kb - 1) {
                 kb_cnt += kb;
                 double* const l1_A = l1[l1Id_AB].A;
                 double* const l1_B = l1[l1Id_AB].B;
 
                 // load next A, B
                 if (snrt_is_dm_core()) {
-
                     snrt_dma_load_2d_tile(l1_A, A, ib, kb, L1_M, L1_K, lda, FP64);
                     snrt_dma_load_2d_tile(l1_B, B, kb, jb, L1_K, L1_N, ldb, FP64);
 
@@ -207,7 +203,7 @@ void gemm_oc_baseline(double alpha, double beta,
                 kb_prev = kb;
             }
 
-            l1Id_C = !l1Id_C; // switch buffers
+            l1Id_C  = !l1Id_C; // switch buffers
             jb_prev = jb;
             ib_prev = ib;
         }
