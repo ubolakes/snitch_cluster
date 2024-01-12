@@ -12,6 +12,9 @@
 NAMED_DUMP(uint32_t, aIdx, 0x1a)
 NAMED_DUMP(uint32_t, bIdx, 0x1b)
 NAMED_DUMP(uint32_t, cIdx, 0x1c)
+NAMED_DUMP(uint32_t, ib, 0x10)
+NAMED_DUMP(uint32_t, jb, 0x11)
+NAMED_DUMP(uint32_t, kb, 0x12)
 NAMED_DUMP(double, a, 0xa)
 NAMED_DUMP(double, b, 0xb)
 NAMED_DUMP(double, c, 0xc)
@@ -94,7 +97,7 @@ void gemm_oc_baseline(double alpha, double beta,
     // For double buffering l1 is a size 2 array
     TcdmLayout* l1 = (TcdmLayout*) snrt_l1_next();
     // if (snrt_is_dm_core()) {
-        // l1 = (TcdmLayout*) snrt_l1alloc(2 * sizeof(TcdmLayout));
+    //     l1 = (TcdmLayout*) snrt_l1alloc(2 * sizeof(TcdmLayout));
     // }
     // snrt_cluster_hw_barrier(); // DMA core is one index ahead
     // dump_l1(l1);
@@ -116,17 +119,37 @@ void gemm_oc_baseline(double alpha, double beta,
     const uint32_t pj = p[1] % PJ;
 
     int ib, jb, kb;
-    bool i_dir = false, j_dir = false, k_dir = false;
+    int ib_prev, jb_prev, kb_prev;
+    volatile int ib_cnt = 0, jb_cnt    = 0, kb_cnt    = 0;
+    bool i_dir          = false, j_dir = false, k_dir = false;
 
     if (snrt_is_compute_core()) {
         snrt_cluster_hw_barrier(); // DMA core is one index ahead
     }
 
+    volatile bool storeC = false;
+
 
     // TODO: check that no out of bound accesses are made
     // TODO: check that dma transfers are finished before the data is used, use a barrier
-    FOR_EACH(ib, pi, I / L1_M, PI, i_dir) {
-        FOR_EACH(jb, pj, J / L1_N, PJ, j_dir) {
+    // FOR_EACH(ib, pi, I / L1_M, PI, i_dir) {
+    i_dir                  = !i_dir;
+    const int ib_end_floor = ((I / 8 - pi + PI - 1) / PI) * PI - PI + pi;
+    const int ib_first     = i_dir ? pi : ib_end_floor;
+    const int ib_last      = i_dir ? ib_end_floor : pi;
+    ib = ib_first;
+    ib_prev = ib;
+    for (; i_dir ? ib <= ib_last : ib >= ib_last; ib = i_dir ? ib + PI : ib - PI) {
+        ib_cnt += ib;
+        // FOR_EACH(jb, pj, J / L1_N, PJ, j_dir) {
+        j_dir                  = !j_dir;
+        const int jb_end_floor = ((J / 8 - pj + PJ - 1) / PJ) * PJ - PJ + pj;
+        const int jb_first     = j_dir ? pj : jb_end_floor;
+        const int jb_last      = j_dir ? jb_end_floor : pj;
+        jb = jb_first;
+        jb_prev = jb;
+        for (; j_dir ? jb <= jb_last : jb >= jb_last; jb = j_dir ? jb + PJ : jb - PJ) {
+            jb_cnt += jb;
             const int i = ib * L1_LDA;
             const int j = jb * L1_LDB;
 
@@ -135,18 +158,30 @@ void gemm_oc_baseline(double alpha, double beta,
             snrt_dma_txid_t dma_txid_load_C  = -1;
             snrt_dma_txid_t dma_txid_store_C = -1;
 
-            // load next C
+
             if (snrt_is_dm_core()) {
-                // TODO: implement piecewise transfer of C in inner loop
+                dump_ib(ib);
+                dump_jb(jb);
                 snrt_dma_load_2d_tile(l1_C, C, ib, jb, L1_M, L1_N, ldc, FP64);
+                if (ib != ib_first || jb != jb_first)
+                    storeC = true;
             }
 
-            FOR_EACH(kb, 0, K / L1_K, 1, k_dir) {
+            // FOR_EACH(kb, 0, K / L1_K, 1, k_dir) {
+            k_dir                  = !k_dir;
+            const int kb_end_floor = ((K / L1_K - 0 + 1 - 1) / 1) * 1 - 1 + 0;
+            const int kb_first     = k_dir ? 0 : kb_end_floor;
+            const int kb_last      = k_dir ? kb_end_floor : 0;
+            kb = kb_first;
+            kb_prev = kb;
+            for (; k_dir ? kb <= kb_last : kb >= kb_last; kb = k_dir ? kb + 1 : kb - 1) {
+                kb_cnt += kb;
                 double* const l1_A = l1[l1Id_AB].A;
                 double* const l1_B = l1[l1Id_AB].B;
 
                 // load next A, B
                 if (snrt_is_dm_core()) {
+
                     snrt_dma_load_2d_tile(l1_A, A, ib, kb, L1_M, L1_K, lda, FP64);
                     snrt_dma_load_2d_tile(l1_B, B, kb, jb, L1_K, L1_N, ldb, FP64);
 
@@ -162,19 +197,28 @@ void gemm_oc_baseline(double alpha, double beta,
 
                 l1Id_AB = !l1Id_AB; // switch buffers
                 snrt_cluster_hw_barrier();
+
+                if (snrt_is_dm_core()) {
+                    if (storeC) {
+                        storeC = false;
+                        snrt_dma_store_2d_tile(C, l1[!l1Id_C].C, ib_prev, jb_prev, L1_M, L1_N, ldc, FP64);
+                    }
+                }
+                kb_prev = kb;
             }
 
             l1Id_C = !l1Id_C; // switch buffers
-
-            if (snrt_is_dm_core()) {
-                // store C
-                snrt_dma_store_2d_tile(C, l1_C, ib, jb, L1_M, L1_N, ldc, FP64);
-            }
+            jb_prev = jb;
         }
+        ib_prev = ib;
     }
 
     if (snrt_is_dm_core()) {
         snrt_cluster_hw_barrier(); // DMA core is one index ahead
+
+        // store final tile
+        snrt_dma_store_2d_tile(C, l1[!l1Id_C].C, ib_prev, jb_prev, L1_M, L1_N, ldc, FP64);
+        snrt_dma_wait_all();
     }
 
     // Free memory once implemented by snrt
