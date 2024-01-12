@@ -8,6 +8,14 @@
 #include "ocrt.h"
 #include "gemm_1c.h"
 
+#include "dump.h"
+NAMED_DUMP(uint32_t, aIdx, 0x1a)
+NAMED_DUMP(uint32_t, bIdx, 0x1b)
+NAMED_DUMP(uint32_t, cIdx, 0x1c)
+NAMED_DUMP(double, a, 0xa)
+NAMED_DUMP(double, b, 0xb)
+NAMED_DUMP(double, c, 0xc)
+
 /**
  * \brief Implements a reversing loop for an index range
  * \param begin Beginning of the range
@@ -37,6 +45,7 @@ typedef struct {
     double B[L1_K * L1_N];
     double C[L1_M * L1_N];
 } TcdmLayout;
+NAMED_DUMP(TcdmLayout*, l1, 0x8)
 
 /**
  * \brief Each cluster performs a GEMM for A, B, C inside each TCDM
@@ -52,10 +61,17 @@ void gemm_cluster_kernel(double alpha, double beta,
     for (uint32_t i = p[0]; i < M; i += P[0]) {
         for (uint32_t j = 0; j < N; j++) {
             uint32_t cIdx      = i * ldc + j; // C[i][j]
+            // dump_cIdx(cIdx);
+            // dump_c(C[cIdx]);
             register double c0 = beta * C[cIdx];
             for (uint32_t k = 0; k < K; k++) {
                 uint32_t aIdx = i * lda + k; // A[i][k]
                 uint32_t bIdx = k * ldb + j; // B[k][j]
+                // dump_aIdx(aIdx);
+                // dump_bIdx(bIdx);
+                // dump_a(A[aIdx]);
+                // dump_b(B[bIdx]);
+
                 c0 += A[aIdx] * B[bIdx];
             }
             C[cIdx] = c0;
@@ -76,7 +92,14 @@ void gemm_oc_baseline(double alpha, double beta,
 
     // Setup layout for TCDM L1
     // For double buffering l1 is a size 2 array
-    TcdmLayout* const l1 = (TcdmLayout*) snrt_l1alloc(2 * sizeof(TcdmLayout));
+    TcdmLayout* l1 = (TcdmLayout*) snrt_l1_next();
+    // if (snrt_is_dm_core()) {
+        // l1 = (TcdmLayout*) snrt_l1alloc(2 * sizeof(TcdmLayout));
+    // }
+    // snrt_cluster_hw_barrier(); // DMA core is one index ahead
+    // dump_l1(l1);
+
+
     bool l1Id_AB         = false;
     bool l1Id_C          = false;
 
