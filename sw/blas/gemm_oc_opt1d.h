@@ -88,6 +88,8 @@ void gemm_cluster_kernel(double alpha, double beta,
     snrt_fpu_fence();
 }
 
+TcdmLayout* l1AddrGlobal[SNRT_CLUSTER_NUM] = {0};
+
 void gemm_oc_baseline(double alpha, double beta,
                       uint32_t m, uint32_t n, uint32_t k,
                       double* A, double* B, double* C,
@@ -105,6 +107,20 @@ void gemm_oc_baseline(double alpha, double beta,
     // Setup layout for TCDM L1
     // For double buffering l1 is a size 2 array
     TcdmLayout* l1 = (TcdmLayout*) snrt_l1_next();
+    TcdmLayout* l1Addr[SNRT_CLUSTER_NUM] = {0};
+
+    // Sync l1 pointers between clusters
+    if (snrt_is_dm_core())
+        l1AddrGlobal[p[1]] = l1;
+    snrt_global_barrier();
+    if (snrt_is_dm_core()) {
+        // l1 = (TcdmLayout*) snrt_l1alloc(2 * sizeof(TcdmLayout));
+        memcpy(l1Addr, l1AddrGlobal, SNRT_CLUSTER_NUM * sizeof(*l1Addr));
+        for (int i = 0; i < SNRT_CLUSTER_NUM; ++i) {
+            dump_l1(l1Addr[i]);
+        }
+    }
+
 
     bool l1Id_AB = false;
     bool l1Id_C  = false;
