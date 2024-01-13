@@ -205,7 +205,7 @@ void gemm_oc_opt2d(double alpha, double beta,
     }
 
     // Wait for pipeline to be emptied
-    for (int pipeline = pk; pipeline < PK; ++pipeline) {
+    for (int pipeline = pk; pipeline < PK -1; ++pipeline) {
         snrt_global_barrier();
     }
 }
