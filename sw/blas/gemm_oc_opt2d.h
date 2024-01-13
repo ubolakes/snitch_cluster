@@ -57,7 +57,7 @@ NAMED_DUMP(TcdmLayout*, l1, 0x8)
 
 TcdmLayout* l1AddrGlobal[SNRT_CLUSTER_NUM] = {0};
 
-void gemm_oc_opt1d(double alpha, double beta,
+void gemm_oc_opt2d(double alpha, double beta,
                       uint32_t m, uint32_t n, uint32_t k,
                       double* A, double* B, double* C,
                       uint32_t lda, uint32_t ldb, uint32_t ldc) {
@@ -194,5 +194,5 @@ inline void gemm_oc(precision_t prec, uint32_t expand, uint32_t setup_ssr,
     // snrt_fpu_fence();
     // snrt_cluster_hw_barrier();
 
-    gemm_oc_opt1d(alpha, beta, m, n, k, a, b, c, lda, ldb, ldc);
+    gemm_oc_opt2d(alpha, beta, m, n, k, a, b, c, lda, ldb, ldc);
 }

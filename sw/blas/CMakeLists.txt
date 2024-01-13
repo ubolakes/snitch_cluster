@@ -11,6 +11,7 @@ set(BLAS_HEADERS
         gemm_1c.h
         gemm_oc.h
         gemm_oc_opt1d.h
+        gemm_oc_opt2d.h
         gemm_tiled.h
 )
 
