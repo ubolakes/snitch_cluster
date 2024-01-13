@@ -16,6 +16,8 @@ NAMED_DUMP(uint32_t, cIdx, 0x1c)
 NAMED_DUMP(uint32_t, ib, 0x10)
 NAMED_DUMP(uint32_t, jb, 0x11)
 NAMED_DUMP(uint32_t, kb, 0x12)
+NAMED_DUMP(uint32_t, pk, 0x13)
+NAMED_DUMP(uint32_t, p_src, 0x14)
 NAMED_DUMP(double, a, 0xa)
 NAMED_DUMP(double, b, 0xb)
 NAMED_DUMP(double, c, 0xc)
@@ -58,9 +60,9 @@ NAMED_DUMP(TcdmLayout*, l1, 0x8)
 TcdmLayout* l1AddrGlobal[SNRT_CLUSTER_NUM] = {0};
 
 void gemm_oc_opt2d(double alpha, double beta,
-                      uint32_t m, uint32_t n, uint32_t k,
-                      double* A, double* B, double* C,
-                      uint32_t lda, uint32_t ldb, uint32_t ldc) {
+                   uint32_t m, uint32_t n, uint32_t k,
+                   double* A, double* B, double* C,
+                   uint32_t lda, uint32_t ldb, uint32_t ldc) {
     /**
     * Problem is double buffered in L1. The buffer that is used is toggled at each iteration.
     * The DMA cores are one index step ahead so they load the data in advance into the buffer that will be used.
@@ -82,9 +84,6 @@ void gemm_oc_opt2d(double alpha, double beta,
     snrt_global_barrier();
     if (snrt_is_dm_core()) {
         memcpy(l1Addr, l1AddrGlobal, SNRT_CLUSTER_NUM * sizeof(*l1Addr));
-        for (int i = 0; i < SNRT_CLUSTER_NUM; ++i) {
-            dump_l1(l1Addr[i]);
-        }
     }
 
     bool l1Id_AB = false;
@@ -93,7 +92,7 @@ void gemm_oc_opt2d(double alpha, double beta,
     // Initialize indices
     const uint32_t I = m, J = n, K = k;
 
-    const uint32_t PI = P[1], PJ = 1;
+    const uint32_t PI = 2, PJ = 2;
     const uint32_t pi = p[1] / PJ;
     const uint32_t pj = p[1] % PJ;
 
@@ -110,8 +109,29 @@ void gemm_oc_opt2d(double alpha, double beta,
         snrt_global_barrier(); // DMA core is one index ahead
     }
 
+    // Compute C2C sources for 2D pipeline
+    volatile const uint32_t pk = (PI + 2 * PJ - pi - pj - 1) % PJ; // pipeline step
+    int PK                     = PJ; // pipeline depth
+
+    // Determine C2C source cluster index for each matrix, < 0 is from DRAM
+    TcdmLayout* c2cL1_A = NULL;
+    TcdmLayout* c2cL1_B = NULL;
+    if (snrt_is_dm_core()) {
+        dump_pk(pk);
+
+        const bool fetch_dram = pk == 0;
+
+        volatile const uint32_t p_srcA = pi * PJ + ((2 * PJ - pi - pk) % PJ);
+        volatile const uint32_t p_srcB = pj + PJ * ((2 * PJ - pj - pk) % PJ);
+        dump_p_src(fetch_dram ? -1 : p_srcA);
+        dump_p_src(fetch_dram ? -1 : p_srcB);
+
+        c2cL1_A = fetch_dram ? NULL : l1Addr[p_srcA];
+        c2cL1_B = fetch_dram ? NULL : l1Addr[p_srcB];
+    }
+
     // Wait for pipeline to be filled
-    for (int pipeline = pi; pipeline > 0; --pipeline) {
+    for (int pipeline = pk; pipeline > 0; --pipeline) {
         snrt_global_barrier();
     }
 
@@ -137,13 +157,17 @@ void gemm_oc_opt2d(double alpha, double beta,
 
                 // load next A, B
                 if (snrt_is_dm_core()) {
-                    snrt_dma_load_2d_tile(l1_A, A, ib, kb, L1_M, L1_K, lda, FP64);
-                    if (pi == 0)
+                    if (c2cL1_A == NULL)
+                        snrt_dma_load_2d_tile(l1_A, A, ib, kb, L1_M, L1_K, lda, FP64);
+                    else {
+                        double* const c2c_A = c2cL1_A[l1Id_AB].A;
+                        snrt_dma_start_1d(l1_A, c2c_A, L1_M * L1_K * FP64);
+                    }
+                    if (c2cL1_B == NULL)
                         snrt_dma_load_2d_tile(l1_B, B, kb, jb, L1_K, L1_N, ldb, FP64);
                     else {
-                        double* const c2c_B = l1Addr[p[1] - 1][l1Id_AB].B;
+                        double* const c2c_B = c2cL1_B[l1Id_AB].B;
                         snrt_dma_start_1d(l1_B, c2c_B, L1_K * L1_N * FP64);
-                        // TODO: use multicast instead
                     }
 
                     snrt_dma_wait_all();
@@ -181,7 +205,7 @@ void gemm_oc_opt2d(double alpha, double beta,
     }
 
     // Wait for pipeline to be emptied
-    for (int pipeline = pi; pipeline < PI -1; ++pipeline) {
+    for (int pipeline = pk; pipeline < PK; ++pipeline) {
         snrt_global_barrier();
     }
 }
