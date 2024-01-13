@@ -184,11 +184,11 @@ void gemm_oc_baseline(double alpha, double beta,
                     snrt_dma_wait_all();
                 } else {
                     // solve block already in l1, parallelize inside each cluster
-                    gemm_cluster_kernel(alpha, beta, L1_M, L1_N, L1_K, l1_A, l1_B, l1_C, L1_LDA, L1_LDB, L1_LDC);
+                    // gemm_cluster_kernel(alpha, beta, L1_M, L1_N, L1_K, l1_A, l1_B, l1_C, L1_LDA, L1_LDB, L1_LDC);
 
-                    // gemm(FP64, 0, true, false, false,
-                    //      m, n, k, alpha,
-                    //      l1_A, l1_lda, l1_B, l1_ldb, beta, l1_C, l1_ldc);
+                    gemm(FP64, 0, true, false, false,
+                         L1_M, L1_N, L1_K, alpha,
+                         l1_A, L1_LDA, l1_B, L1_LDB, beta, l1_C, L1_LDC);
                 }
 
                 l1Id_AB = !l1Id_AB; // switch buffers
