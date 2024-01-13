@@ -8,7 +8,6 @@
 #include "snrt.h"
 
 #include "gemm.h"
-#include "data.h"
 
 #include "dump.h"
 NAMED_DUMP(uint32_t, err, 0x7)

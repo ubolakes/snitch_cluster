@@ -4,6 +4,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <string.h>
 
 #include "ocrt.h"
 #include "gemm_1c.h"
@@ -87,6 +88,8 @@ void gemm_cluster_kernel(double alpha, double beta,
     snrt_fpu_fence();
 }
 
+TcdmLayout* l1AddrGlobal[SNRT_CLUSTER_NUM] = {0};
+
 void gemm_oc_baseline(double alpha, double beta,
                       uint32_t m, uint32_t n, uint32_t k,
                       double* A, double* B, double* C,
@@ -94,17 +97,29 @@ void gemm_oc_baseline(double alpha, double beta,
     /**
     * Problem is double buffered in L1. The buffer that is used is toggled at each iteration.
     * The DMA cores are one index step ahead so they load the data in advance into the buffer that will be used.
-    *
     */
+
+    volatile uint32_t p[3] = {0, 0, 0};
+    volatile uint32_t P[3] = {0, 0, 0};
+    ocrt_thread_idx(p);
+    ocrt_compute_thread_num(P);
 
     // Setup layout for TCDM L1
     // For double buffering l1 is a size 2 array
     TcdmLayout* l1 = (TcdmLayout*) snrt_l1_next();
-    // if (snrt_is_dm_core()) {
-    //     l1 = (TcdmLayout*) snrt_l1alloc(2 * sizeof(TcdmLayout));
-    // }
-    // snrt_cluster_hw_barrier(); // DMA core is one index ahead
-    // dump_l1(l1);
+    TcdmLayout* l1Addr[SNRT_CLUSTER_NUM] = {0};
+
+    // Sync l1 pointers between clusters
+    if (snrt_is_dm_core())
+        l1AddrGlobal[p[1]] = l1;
+    snrt_global_barrier();
+    if (snrt_is_dm_core()) {
+        // l1 = (TcdmLayout*) snrt_l1alloc(2 * sizeof(TcdmLayout));
+        memcpy(l1Addr, l1AddrGlobal, SNRT_CLUSTER_NUM * sizeof(*l1Addr));
+        for (int i = 0; i < SNRT_CLUSTER_NUM; ++i) {
+            dump_l1(l1Addr[i]);
+        }
+    }
 
 
     bool l1Id_AB = false;
@@ -112,11 +127,6 @@ void gemm_oc_baseline(double alpha, double beta,
 
     // Initialize indices
     const uint32_t I = m, J = n, K = k;
-
-    volatile uint32_t p[3] = {0, 0, 0};
-    volatile uint32_t P[3] = {0, 0, 0};
-    ocrt_thread_idx(p);
-    ocrt_compute_thread_num(P);
 
     const uint32_t PI = P[1], PJ = 1;
     const uint32_t pi = p[1] / PJ;
