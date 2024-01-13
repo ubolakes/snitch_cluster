@@ -20,6 +20,9 @@ NAMED_DUMP(double, a, 0xa)
 NAMED_DUMP(double, b, 0xb)
 NAMED_DUMP(double, c, 0xc)
 
+#define MIN(a,b) ((a)<(b)?(a):(b))
+#define MAX(a,b) ((a)>(b)?(a):(b))
+
 /**
  * \brief Implements a reversing loop for an index range
  * \param begin Beginning of the range
@@ -110,8 +113,19 @@ void gemm_oc_opt1d(double alpha, double beta,
         snrt_global_barrier(); // DMA core is one index ahead
     }
 
+    // -- Compute C2C sources for 2D pipeline
+    volatile const uint32_t pk = MAX(pi, pj); // pipeline step
+    int PK                     = MAX(PI, PJ); // pipeline depth
+
+    // Determine C2C source cluster index for each matrix, < 0 is from DRAM
+    int pIdx_A = pj - 1;
+    int pIdx_B = pi - 1;
+    TcdmLayout* const p_srcA = pIdx_A == 0 ? NULL : l1Addr[pIdx_A - 1];
+    TcdmLayout* const p_srcB = pIdx_B == 0 ? NULL : l1Addr[pIdx_B - 1];
+
+
     // Wait for pipeline to be filled
-    for (int pipeline = pi; pipeline > 0; --pipeline) {
+    for (int pipeline = pk; pipeline > 0; --pipeline) {
         snrt_global_barrier();
     }
 
@@ -137,13 +151,18 @@ void gemm_oc_opt1d(double alpha, double beta,
 
                 // load next A, B
                 if (snrt_is_dm_core()) {
-                    snrt_dma_load_2d_tile(l1_A, A, ib, kb, L1_M, L1_K, lda, FP64);
-                    if (pi == 0)
+                    // TODO: use multicast instead
+                    if (p_srcA == NULL)
+                        snrt_dma_load_2d_tile(l1_A, A, ib, kb, L1_M, L1_K, lda, FP64);
+                    else {
+                        double* const c2c_A = p_srcA[l1Id_AB].A;
+                        snrt_dma_start_1d(l1_A, c2c_A, L1_M * L1_K * FP64);
+                    }
+                    if (p_srcB == NULL)
                         snrt_dma_load_2d_tile(l1_B, B, kb, jb, L1_K, L1_N, ldb, FP64);
                     else {
-                        double* const c2c_B = l1Addr[p[1] - 1][l1Id_AB].B;
+                        double* const c2c_B = p_srcB[l1Id_AB].B;
                         snrt_dma_start_1d(l1_B, c2c_B, L1_K * L1_N * FP64);
-                        // TODO: use multicast instead
                     }
 
                     snrt_dma_wait_all();
@@ -181,7 +200,7 @@ void gemm_oc_opt1d(double alpha, double beta,
     }
 
     // Wait for pipeline to be emptied
-    for (int pipeline = pi; pipeline < PI -1; ++pipeline) {
+    for (int pipeline = pk; pipeline < PK -1; ++pipeline) {
         snrt_global_barrier();
     }
 }
