@@ -107,7 +107,7 @@ void gemm_oc_opt1d(double alpha, double beta,
     volatile int ib_cnt = 0, jb_cnt = 0, kb_cnt = 0;
 
     if (snrt_is_compute_core()) {
-        snrt_cluster_hw_barrier(); // DMA core is one index ahead
+        snrt_global_barrier(); // DMA core is one index ahead
     }
 
     // Wait for pipeline to be filled
@@ -138,7 +138,12 @@ void gemm_oc_opt1d(double alpha, double beta,
                 // load next A, B
                 if (snrt_is_dm_core()) {
                     snrt_dma_load_2d_tile(l1_A, A, ib, kb, L1_M, L1_K, lda, FP64);
-                    snrt_dma_load_2d_tile(l1_B, B, kb, jb, L1_K, L1_N, ldb, FP64);
+                    if (pi == 0)
+                        snrt_dma_load_2d_tile(l1_B, B, kb, jb, L1_K, L1_N, ldb, FP64);
+                    else {
+                        double* const c2c_B = l1Addr[p[1] - 1][l1Id_AB].B;
+                        snrt_dma_start_1d(l1_B, c2c_B, L1_K * L1_N * FP64);
+                    }
 
                     snrt_dma_wait_all();
                 } else {
@@ -149,7 +154,7 @@ void gemm_oc_opt1d(double alpha, double beta,
                 }
 
                 l1Id_AB = !l1Id_AB; // switch buffers
-                snrt_cluster_hw_barrier();
+                snrt_global_barrier();
 
                 if (snrt_is_dm_core()) {
                     if (storeC) {
@@ -167,15 +172,17 @@ void gemm_oc_opt1d(double alpha, double beta,
     }
 
     if (snrt_is_dm_core()) {
-        snrt_cluster_hw_barrier(); // DMA core is one index ahead
+        snrt_global_barrier(); // DMA core is one index ahead
 
         // store final tile
         snrt_dma_store_2d_tile(C, l1[!l1Id_C].C, ib_prev, jb_prev, L1_M, L1_N, ldc, FP64);
         snrt_dma_wait_all();
     }
 
-    // Free memory once implemented by snrt
-    // snrt_l1free(l1);
+    // Wait for pipeline to be emptied
+    for (int pipeline = pi; pipeline < PI -1; ++pipeline) {
+        snrt_global_barrier();
+    }
 }
 
 inline void gemm_oc(precision_t prec, uint32_t expand, uint32_t setup_ssr,
