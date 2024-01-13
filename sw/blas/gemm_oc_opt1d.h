@@ -55,42 +55,9 @@ typedef struct {
 
 NAMED_DUMP(TcdmLayout*, l1, 0x8)
 
-/**
- * \brief Each cluster performs a GEMM for A, B, C inside each TCDM
- */
-void gemm_cluster_kernel(double alpha, double beta,
-                         uint32_t M, uint32_t N, uint32_t K,
-                         double* const A, double* const B, double* const C,
-                         int lda, int ldb, int ldc) {
-    uint32_t p[3], P[3];
-    ocrt_thread_idx(p);
-    ocrt_compute_thread_num(P);
-
-    for (uint32_t i = p[0]; i < M; i += P[0]) {
-        for (uint32_t j = 0; j < N; j++) {
-            uint32_t cIdx = i * ldc + j; // C[i][j]
-            // dump_cIdx(cIdx);
-            // dump_c(C[cIdx]);
-            register double c0 = beta * C[cIdx];
-            for (uint32_t k = 0; k < K; k++) {
-                uint32_t aIdx = i * lda + k; // A[i][k]
-                uint32_t bIdx = k * ldb + j; // B[k][j]
-                // dump_aIdx(aIdx);
-                // dump_bIdx(bIdx);
-                // dump_a(A[aIdx]);
-                // dump_b(B[bIdx]);
-
-                c0 += A[aIdx] * B[bIdx];
-            }
-            C[cIdx] = c0;
-        }
-    }
-    snrt_fpu_fence();
-}
-
 TcdmLayout* l1AddrGlobal[SNRT_CLUSTER_NUM] = {0};
 
-void gemm_oc_baseline(double alpha, double beta,
+void gemm_oc_opt1d(double alpha, double beta,
                       uint32_t m, uint32_t n, uint32_t k,
                       double* A, double* B, double* C,
                       uint32_t lda, uint32_t ldb, uint32_t ldc) {
@@ -114,13 +81,11 @@ void gemm_oc_baseline(double alpha, double beta,
         l1AddrGlobal[p[1]] = l1;
     snrt_global_barrier();
     if (snrt_is_dm_core()) {
-        // l1 = (TcdmLayout*) snrt_l1alloc(2 * sizeof(TcdmLayout));
         memcpy(l1Addr, l1AddrGlobal, SNRT_CLUSTER_NUM * sizeof(*l1Addr));
         for (int i = 0; i < SNRT_CLUSTER_NUM; ++i) {
             dump_l1(l1Addr[i]);
         }
     }
-
 
     bool l1Id_AB = false;
     bool l1Id_C  = false;
@@ -145,23 +110,14 @@ void gemm_oc_baseline(double alpha, double beta,
         snrt_cluster_hw_barrier(); // DMA core is one index ahead
     }
 
-    // FOR_EACH(ib, pi, I / L1_M, PI, ib_dir, ib_prev) {
-    ib_dir                 = !ib_dir;
-    const int ib_end_floor = ((I / 8 - pi + PI - 1) / PI) * PI - PI + pi;
-    const int ib_first     = ib_dir ? pi : ib_end_floor;
-    const int ib_last      = ib_dir ? ib_end_floor : pi;
-    ib                     = ib_first;
-    ib_prev                = ib;
-    for (; ib_dir ? ib <= ib_last : ib >= ib_last; ib = ib_dir ? ib + PI : ib - PI) {
+    // Wait for pipeline to be filled
+    for (int pipeline = pi; pipeline > 0; --pipeline) {
+        snrt_global_barrier();
+    }
+
+    FOR_EACH(ib, pi, I / L1_M, PI, ib_dir, ib_prev) {
         ib_cnt += ib;
-        // FOR_EACH(jb, pj, J / L1_N, PJ, jb_dir, jb_prev) {
-        jb_dir                 = !jb_dir;
-        const int jb_end_floor = ((J / 8 - pj + PJ - 1) / PJ) * PJ - PJ + pj;
-        const int jb_first     = jb_dir ? pj : jb_end_floor;
-        const int jb_last      = jb_dir ? jb_end_floor : pj;
-        jb                     = jb_first;
-        jb_prev                = jb;
-        for (; jb_dir ? jb <= jb_last : jb >= jb_last; jb = jb_dir ? jb + PJ : jb - PJ) {
+        FOR_EACH(jb, pj, J / L1_N, PJ, jb_dir, jb_prev) {
             jb_cnt += jb;
 
             double* const l1_C = l1[l1Id_C].C;
@@ -174,14 +130,7 @@ void gemm_oc_baseline(double alpha, double beta,
                     storeC = true;
             }
 
-            // FOR_EACH(kb, 0, K / L1_K, 1, kb_dir, kb_prev) {
-            kb_dir                 = !kb_dir;
-            const int kb_end_floor = ((K / L1_K - 0 + 1 - 1) / 1) * 1 - 1 + 0;
-            const int kb_first     = kb_dir ? 0 : kb_end_floor;
-            const int kb_last      = kb_dir ? kb_end_floor : 0;
-            kb                     = kb_first;
-            kb_prev                = kb;
-            for (; kb_dir ? kb <= kb_last : kb >= kb_last; kb = kb_dir ? kb + 1 : kb - 1) {
+            FOR_EACH(kb, 0, K / L1_K, 1, kb_dir, kb_prev) {
                 kb_cnt += kb;
                 double* const l1_A = l1[l1Id_AB].A;
                 double* const l1_B = l1[l1Id_AB].B;
@@ -194,8 +143,6 @@ void gemm_oc_baseline(double alpha, double beta,
                     snrt_dma_wait_all();
                 } else {
                     // solve block already in l1, parallelize inside each cluster
-                    // gemm_cluster_kernel(alpha, beta, L1_M, L1_N, L1_K, l1_A, l1_B, l1_C, L1_LDA, L1_LDB, L1_LDC);
-
                     gemm(FP64, 0, true, false, false,
                          L1_M, L1_N, L1_K, alpha,
                          l1_A, L1_LDA, l1_B, L1_LDB, beta, l1_C, L1_LDC);
@@ -239,5 +186,5 @@ inline void gemm_oc(precision_t prec, uint32_t expand, uint32_t setup_ssr,
     // snrt_fpu_fence();
     // snrt_cluster_hw_barrier();
 
-    gemm_oc_baseline(alpha, beta, m, n, k, a, b, c, lda, ldb, ldc);
+    gemm_oc_opt1d(alpha, beta, m, n, k, a, b, c, lda, ldb, ldc);
 }
