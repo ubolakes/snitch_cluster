@@ -6,8 +6,8 @@
 //         Luca Colagrande <colluca@iis.ee.ethz.ch>
 
 #include <math.h>
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 #include "snrt.h"
 
@@ -27,8 +27,8 @@ int main() {
     uint32_t ldb = N;
     uint32_t ldc = N;
 
-    gemm_oc(dtype_size, expand, setup_ssr, TA, TB, M, N, K, 1,
-            a, lda, b, ldb, BETA, c, ldc);
+    gemm_oc(dtype_size, expand, setup_ssr, TA, TB, M, N, K, 1, a, lda, b, ldb,
+            BETA, c, ldc);
 
     uint32_t end_cycle = snrt_mcycle();
 
@@ -42,8 +42,7 @@ int main() {
         for (uint32_t m = 0; m < M; m++) {
             for (uint32_t n = 0; n < N; n++) {
                 uint32_t idx = m * N + n;
-                if (fabs(result[idx] - c[idx]) < 0.001)
-                    errors--;
+                if (fabs(result[idx] - c[idx]) < 0.001) errors--;
             }
         }
         // printf("%d/%d Errors\n", errors, M * N);
@@ -135,7 +134,8 @@ int main() {
 //                             errors--;
 //                         break;
 //                     case FP32:
-//                         if (fabs(result[idx] - ((float *)local_c)[idx]) > 0.001)
+//                         if (fabs(result[idx] - ((float *)local_c)[idx]) >
+//                         0.001)
 //                             errors--;
 //                         break;
 //                     case FP16:
