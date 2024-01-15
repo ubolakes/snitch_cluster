@@ -78,9 +78,14 @@ def emit_header(**kwargs):
         b = sign_b << 7 | exponent_b << FP8_FORMATS['fp8']['mant'] | mantissa_b
         c = sign_c << 7 | exponent_c << FP8_FORMATS['fp8']['mant'] | mantissa_c
     else:
-        a = np.random.rand(kwargs['M'], kwargs['K']).astype(dtype)
-        b = np.random.rand(kwargs['K'], kwargs['N']).astype(dtype)
-        c = np.random.rand(kwargs['M'], kwargs['N']).astype(dtype)
+        if kwargs['linspace']:
+            a = np.linspace(0.1, kwargs['M'] * kwargs['K'] + 0.1 -1, num=kwargs['M'] * kwargs['K']).reshape((kwargs['M'], kwargs['K'])).astype(dtype)
+            b = np.linspace(0.2, kwargs['K'] * kwargs['N'] + 0.2 -1, num=kwargs['K'] * kwargs['N']).reshape((kwargs['K'], kwargs['N'])).astype(dtype)
+            c = np.linspace(0.3, kwargs['M'] * kwargs['N'] + 0.3 -1, num=kwargs['M'] * kwargs['N']).reshape((kwargs['M'], kwargs['N'])).astype(dtype)
+        else:
+            a = np.random.rand(kwargs['M'], kwargs['K']).astype(dtype)
+            b = np.random.rand(kwargs['K'], kwargs['N']).astype(dtype)
+            c = np.random.rand(kwargs['M'], kwargs['N']).astype(dtype)
         result = golden_model(a, b, kwargs['alpha'], c)
 
     # Store matrices in transposed form if requested

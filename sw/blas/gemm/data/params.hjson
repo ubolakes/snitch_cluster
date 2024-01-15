@@ -13,4 +13,5 @@
     tb: true, // must be true for SIMD
     prec: 64,
     expand: 0
+    linspace: true
 }
