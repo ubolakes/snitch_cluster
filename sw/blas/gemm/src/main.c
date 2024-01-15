@@ -27,8 +27,8 @@ int main() {
     uint32_t ldb = N;
     uint32_t ldc = N;
 
-    gemm_oc(dtype_size, expand, setup_ssr, TA, TB, M, N, K, ALPHA,
-            a, lda, b, ldb, 1, c, ldc);
+    gemm_oc(dtype_size, expand, setup_ssr, TA, TB, M, N, K, 1,
+            a, lda, b, ldb, BETA, c, ldc);
 
     uint32_t end_cycle = snrt_mcycle();
 
