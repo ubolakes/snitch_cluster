@@ -205,3 +205,119 @@ inline void snrt_dma_memset(void *ptr, uint8_t value, uint32_t len) {
         snrt_dma_start_2d(ptr, ptr, 64, 64, 0, len / 64);
     snrt_dma_wait_all();
 }
+
+
+//================================================================================
+// Matrix tile functions
+//================================================================================
+
+
+/// Load a 2D-tile of shape (tile_x1_size, tile_x0_size) from the 2D array
+/// of shape (full_x1_size, full_x0_size). The specific tile is selected
+/// by the (tile_x1_idx, tile_x0_idx) tuple. Every element in the src and
+/// destination arrays has prec bytes.
+inline snrt_dma_txid_t snrt_dma_load_2d_tile(void *dst, void *src,
+                                             size_t tile_x1_idx, size_t tile_x0_idx,
+                                             size_t tile_x1_size, size_t tile_x0_size,
+                                             size_t full_x0_size, uint32_t prec) {
+    size_t src_offset = 0;
+    // Advance src array in x0 and x1 dimensions, and convert to byte offset
+    src_offset += tile_x0_idx * tile_x0_size;
+    src_offset += tile_x1_idx * tile_x1_size * full_x0_size;
+    src_offset *= prec;
+    // Initiate transfer
+    return snrt_dma_start_2d(
+        dst,                  // dst
+        src + src_offset,     // src
+        tile_x0_size * prec,  // size
+        tile_x0_size * prec,  // dst_stride
+        full_x0_size * prec,  // src_stride
+        tile_x1_size          // repeat
+    );
+}
+
+/// Store a 2D-tile of shape (tile_x1_size, tile_x0_size) to the 2D array
+/// of shape (full_x1_size, full_x0_size). The specific tile is selected
+/// by the (tile_x1_idx, tile_x0_idx) tuple. Every element in the src and
+/// destination arrays has prec bytes.
+inline snrt_dma_txid_t snrt_dma_store_2d_tile(void *dst, void *src,
+                                             size_t tile_x1_idx, size_t tile_x0_idx,
+                                             size_t tile_x1_size, size_t tile_x0_size,
+                                             size_t full_x0_size, uint32_t prec) {
+    size_t dst_offset = 0;
+    // Advance dst array in x0 and x1 dimensions, and convert to byte offset
+    dst_offset += tile_x0_idx * tile_x0_size;
+    dst_offset += tile_x1_idx * tile_x1_size * full_x0_size;
+    dst_offset *= prec;
+    // Initiate transfer
+    return snrt_dma_start_2d(
+        dst + dst_offset,     // dst
+        src,                  // src
+        tile_x0_size * prec,  // size
+        full_x0_size * prec,  // dst_stride
+        tile_x0_size * prec,  // src_stride
+        tile_x1_size          // repeat
+    );
+}
+
+//================================================================================
+// Reduction functions
+//================================================================================
+
+// Assumes the dst and src buffers are at the same offset in the TCDM of every
+// cluster
+inline void snrt_global_reduction_dma(double* dst_buffer, double* src_buffer,
+                                      size_t len) {
+    // If we have a single cluster the reduction degenerates to a memcpy
+    if (snrt_cluster_num() == 1) {
+        if (!snrt_is_compute_core()) {
+            snrt_dma_start_1d(dst_buffer, src_buffer, len * sizeof(double));
+            snrt_dma_wait_all();
+        }
+        snrt_cluster_hw_barrier();
+    } else {
+        // Iterate levels in the binary reduction tree
+        int num_levels = ceil(log2(snrt_cluster_num()));
+        for (unsigned int level = 0; level < num_levels; level++) {
+
+            // Determine whether the current cluster is an active cluster.
+            // An active cluster is a cluster that participates in the current
+            // level of the reduction tree. Every second cluster among the active
+            // ones is a sender.
+            uint32_t is_active = (snrt_cluster_idx() % (1 << level)) == 0;
+            uint32_t is_sender = (snrt_cluster_idx() % (1 << (level + 1))) != 0;
+
+            // If the cluster is a sender, it sends the data in its source
+            // buffer to the respective receiver's destination buffer
+            if (is_active && is_sender) {
+                if (!snrt_is_compute_core()) {
+                    void *dst = (void *)dst_buffer -
+                        (1 << level) * SNRT_CLUSTER_OFFSET;
+                    snrt_dma_start_1d(dst, src_buffer, len * sizeof(double));
+                    snrt_dma_wait_all();
+                }
+            }
+
+            // Synchronize senders and receivers
+            snrt_global_barrier();
+
+            // Every cluster which is not a sender performs the reduction
+            if (is_active && !is_sender) {
+                // Computation is parallelized over the compute cores
+                if (snrt_is_compute_core()) {
+                    uint32_t items_per_core =
+                        len / snrt_cluster_compute_core_num();
+                    uint32_t core_offset =
+                        snrt_cluster_core_idx() * items_per_core;
+                    for (uint32_t i = 0; i < items_per_core; i++) {
+                        uint32_t abs_i = core_offset + i;
+                        dst_buffer[abs_i] += src_buffer[abs_i];
+                    }
+                }
+            }
+
+            // Synchronize compute and DM cores for next tree level
+            snrt_cluster_hw_barrier();
+        }
+    }
+}
