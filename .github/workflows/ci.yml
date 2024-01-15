@@ -36,19 +36,19 @@ jobs:
           submodules: 'recursive'
       - name: Build Software
         run: |
+          bender vendor init
           make -C target/snitch_cluster sw
       - name: Build Hardware
         run: |
           make -C target/snitch_cluster bin/snitch_cluster.vlt
       - name: Run Tests
         working-directory: target/snitch_cluster
-        run: |-
-          ../../util/sim/simulate.py sw/run.yaml --simulator verilator -j \
-          --verbose
+        run: |
+          ./run.py sw/run.yaml --simulator verilator -j
 
-  ############################################
+  #########################################
   # Build SW on Snitch Cluster w/ Banshee #
-  ############################################
+  #########################################
 
   sw-snitch-cluster-banshee:
     name: Simulate SW on Snitch Cluster w/ Banshee
@@ -61,11 +61,11 @@ jobs:
           submodules: 'recursive'
       - name: Build Software
         run: |
+          bender vendor init
           make -C target/snitch_cluster SELECT_RUNTIME=banshee sw
       - name: Run Tests
         env:
           SNITCH_LOG: info
         working-directory: target/snitch_cluster
-        run: |-
-          ../../util/sim/simulate.py sw/run.yaml --simulator banshee -j \
-          --verbose
+        run: |
+          ./run.py sw/run.yaml --simulator banshee -j

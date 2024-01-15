@@ -2,7 +2,8 @@
 # Licensed under the Apache License, Version 2.0, see LICENSE for details.
 # SPDX-License-Identifier: Apache-2.0
 
-REGGEN = $(shell bender path register_interface)/vendor/lowrisc_opentitan/util/regtool.py
+BENDER ?= bender
+REGGEN  = $(shell $(BENDER) path register_interface)/vendor/lowrisc_opentitan/util/regtool.py
 
 GENERATED_DOCS_DIR = docs/generated
 GENERATED_DOC_SRCS = $(GENERATED_DOCS_DIR)/peripherals.md
@@ -16,9 +17,7 @@ clean: clean-docs
 doc-srcs: $(GENERATED_DOC_SRCS)
 
 docs: doc-srcs
-	@if mkdocs build | grep -q "ERROR"; then \
-		exit 1; \
-	fi
+	mkdocs build
 
 clean-docs:
 	rm -rf $(GENERATED_DOCS_DIR)

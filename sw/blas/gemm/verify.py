@@ -37,22 +37,27 @@ def main():
     a = np.array(bytes_to_doubles(elf.get_symbol_contents('a')))
     b = np.array(bytes_to_doubles(elf.get_symbol_contents('b')))
     c = np.array(bytes_to_doubles(elf.get_symbol_contents('c')))
-    alpha = bytes_to_uint32s(elf.get_symbol_contents('ALPHA'))[0]
+    beta = bytes_to_uint32s(elf.get_symbol_contents('BETA'))[0]
     m = bytes_to_uint32s(elf.get_symbol_contents('M'))[0]
     n = bytes_to_uint32s(elf.get_symbol_contents('N'))[0]
     k = bytes_to_uint32s(elf.get_symbol_contents('K'))[0]
     tb = bytes_to_uint32s(elf.get_symbol_contents('TB'))[0]
     a = np.reshape(a, (m, k))
-    b = np.reshape(b, (k, n))
     if tb:
+        b = np.reshape(b, (n, k))
         b = b.transpose()
+    else:
+        b = np.reshape(b, (k, n))
     c = np.reshape(c, (m, n))
 
     # Verify results
-    c_golden = golden_model(a, b, alpha, c).flatten()
+    c_golden = golden_model(1, a, b, beta, c).flatten()
 
     absolute_err = np.absolute(c_golden - c_actual)
     fail = np.any(absolute_err > ERR_THRESHOLD)
+    if (fail):
+        verification.dump_results_to_csv([c_golden, c_actual, absolute_err],
+                                         Path.cwd() / 'gemm_results.csv')
 
     return int(fail)
 
