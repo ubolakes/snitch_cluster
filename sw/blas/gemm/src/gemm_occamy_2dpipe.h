@@ -114,10 +114,15 @@ void gemm_oc_opt2d(double alpha, double beta, uint32_t m, uint32_t n,
     TcdmLayout* l1Addr[SNRT_CLUSTER_NUM] = {0};
 
     // Sync l1 pointers between clusters
-    if (snrt_is_dm_core()) l1AddrGlobal[p[1]] = l1;
+    if (snrt_is_dm_core()) {
+        l1AddrGlobal[p[1]] = l1;
+    }
     snrt_global_barrier();
     if (snrt_is_dm_core()) {
-        memcpy(l1Addr, l1AddrGlobal, SNRT_CLUSTER_NUM * sizeof(*l1Addr));
+        for (int i = 0; i < SNRT_CLUSTER_NUM; ++i)
+            l1Addr[i] = l1 + cluster_offset * (i - snrt_cluster_idx());
+        
+        // memcpy(l1Addr, l1AddrGlobal, SNRT_CLUSTER_NUM * sizeof(*l1Addr));
     }
 
     bool l1Id_AB = false;
