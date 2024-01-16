@@ -24,6 +24,7 @@ tool respectively. The corresponding output is contained in
 import argparse
 import json
 import json5
+import hjson
 from mako.template import Template
 import sys
 
@@ -99,7 +100,7 @@ def main():
 
     # Load hardware configuration
     with open(args.cfg, 'r') as f:
-        cfg = json5.load(f)
+        cfg = hjson.load(f)
 
     # Read and render input files
     data, spec = load_json_inputs(args.input, args.spec, cfg=cfg)

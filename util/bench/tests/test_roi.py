@@ -8,6 +8,8 @@
 import json
 from pathlib import Path
 import pytest
+import sys
+sys.path.append(str(Path(__file__).parent / '../..'))
 from bench.roi import get_roi, format_roi, load_json_inputs, filter_and_label_rois
 
 TEST_DATA_DIR = Path(__file__).resolve().parent / 'test_data'
