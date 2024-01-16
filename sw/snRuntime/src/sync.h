@@ -59,10 +59,6 @@ inline void snrt_cluster_hw_barrier() {
     asm volatile("csrr x0, 0x7C2" ::: "memory");
 }
 
-#ifndef cluster_offset
-#define cluster_offset 0
-#endif
-
 /// Synchronize clusters globally with a global software barrier
 inline void snrt_global_barrier() {
     snrt_cluster_hw_barrier();
@@ -70,20 +66,20 @@ inline void snrt_global_barrier() {
     // Synchronize all DM cores in software
     if (snrt_is_dm_core()) {
         // Get barrier in cluster 0 tcdm
-        snrt_barrier_t tcdm_barrier = *(snrt_barrier_t*)
+        snrt_barrier_t* tcdm_barrier = (snrt_barrier_t*)
                 ((uint32_t) (&_snrt_barrier) - cluster_offset * snrt_cluster_idx());
 
         // Remember previous iteration
-        uint32_t prev_barrier_iteration = tcdm_barrier.iteration;
-        __atomic_add_fetch(&(tcdm_barrier.cnt), 1, __ATOMIC_RELAXED);
+        uint32_t prev_barrier_iteration = tcdm_barrier->iteration;
+        __atomic_add_fetch(&(tcdm_barrier->cnt), 1, __ATOMIC_RELAXED);
 
         // Increment the barrier counter
         if (snrt_cluster_idx() == 0) {
-            while(tcdm_barrier.cnt != snrt_cluster_num());
-            tcdm_barrier.cnt = 0;
-            __atomic_add_fetch(&(tcdm_barrier.iteration), 1, __ATOMIC_RELAXED);
+            while(tcdm_barrier->cnt != snrt_cluster_num());
+            tcdm_barrier->cnt = 0;
+            __atomic_add_fetch(&(tcdm_barrier->iteration), 1, __ATOMIC_RELAXED);
         } else {
-            while (prev_barrier_iteration == tcdm_barrier.iteration);
+            while (prev_barrier_iteration == tcdm_barrier->iteration);
         }
     }
     // Synchronize cores in a cluster with the HW barrier

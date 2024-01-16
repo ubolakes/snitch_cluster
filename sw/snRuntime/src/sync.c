@@ -7,7 +7,7 @@
 //================================================================================
 
 volatile uint32_t _snrt_mutex;
-volatile snrt_barrier_t _snrt_barrier;
+__thread volatile snrt_barrier_t _snrt_barrier;
 volatile uint32_t _reduction_result;
 
 //================================================================================
