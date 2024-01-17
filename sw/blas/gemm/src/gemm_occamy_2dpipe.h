@@ -6,7 +6,7 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "gemm.h"
+#include "gemm_kernel.h"
 #include "snrt.h"
 
 #include "dump.h"
@@ -110,20 +110,7 @@ void gemm_oc_opt2d(double alpha, double beta, uint32_t m, uint32_t n,
 
     // Setup layout for TCDM L1
     // For double buffering l1 is a size 2 array
-    TcdmLayout* l1 = (TcdmLayout*)snrt_l1_next();
-    TcdmLayout* l1Addr[SNRT_CLUSTER_NUM] = {0};
-
-    // Sync l1 pointers between clusters
-    if (snrt_is_dm_core()) {
-        l1AddrGlobal[p[1]] = l1;
-    }
-    snrt_global_barrier();
-    if (snrt_is_dm_core()) {
-        for (int i = 0; i < SNRT_CLUSTER_NUM; ++i)
-            l1Addr[i] = l1 + cluster_offset * (i - snrt_cluster_idx());
-        
-        // memcpy(l1Addr, l1AddrGlobal, SNRT_CLUSTER_NUM * sizeof(*l1Addr));
-    }
+    TcdmLayout* l1 = snrt_l1_next();
 
     bool l1Id_AB = false;
     bool l1Id_C = false;
@@ -139,35 +126,39 @@ void gemm_oc_opt2d(double alpha, double beta, uint32_t m, uint32_t n,
     int ib_prev, jb_prev, kb_prev;
     bool ib_dir = false, jb_dir = false, kb_dir = false;
 
-    bool storeC = false;
-
     // Debug
     volatile int ib_cnt = 0, jb_cnt = 0, kb_cnt = 0;
 
-    if (snrt_is_compute_core()) {
-        snrt_global_barrier();  // DMA core is one index ahead
-    }
+    bool storeC = false;
 
-    // Compute C2C sources for 2D pipeline
-    volatile const uint32_t pk =
-        (PI + 2 * PJ - pi - pj - 1) % PJ;  // pipeline step
-    int PK = PJ;                           // pipeline depth
+    // -- Compute C2C sources for 2D pipeline
+    const uint32_t pk = (PI + 2 * PJ - pi - pj - 1) % PJ; // pipeline step
+    const int PK      = PJ;                               // pipeline depth
 
     // Determine C2C source cluster index for each matrix, < 0 is from DRAM
     TcdmLayout* c2cL1_A = NULL;
     TcdmLayout* c2cL1_B = NULL;
     if (snrt_is_dm_core()) {
-        dump_pk(pk);
+        // -- Sync l1 pointers between clusters
+        TcdmLayout* l1Ptr[SNRT_CLUSTER_NUM];
+        for (int i = 0; i < SNRT_CLUSTER_NUM; ++i)
+            l1Ptr[i] = l1 + cluster_offset * (i - snrt_cluster_idx());
 
-        const bool fetch_dram = pk == 0;
-
+        // 2D pipeline indices, see notes or python notebook for details
+        // Works for PI = PJ
         volatile const uint32_t p_srcA = pi * PJ + ((2 * PJ - pi - pk) % PJ);
         volatile const uint32_t p_srcB = pj + PJ * ((2 * PJ - pj - pk) % PJ);
-        dump_p_src(fetch_dram ? -1 : p_srcA);
-        dump_p_src(fetch_dram ? -1 : p_srcB);
 
-        c2cL1_A = fetch_dram ? NULL : l1Addr[p_srcA];
-        c2cL1_B = fetch_dram ? NULL : l1Addr[p_srcB];
+        const bool fetch_dram = pk == 0;
+        c2cL1_A = fetch_dram ? NULL : l1Ptr[p_srcA];
+        c2cL1_B = fetch_dram ? NULL : l1Ptr[p_srcB];
+
+        // dump_p_src(fetch_dram ? -1 : p_srcA);
+        // dump_p_src(fetch_dram ? -1 : p_srcB);
+    }
+
+    if (snrt_is_compute_core()) {
+        snrt_global_barrier();  // DMA core is one index ahead
     }
 
     // Wait for pipeline to be filled

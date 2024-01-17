@@ -6,6 +6,8 @@
 //         Luca Bertaccini <lbertaccini@iis.ee.ethz.ch>
 //         Luca Colagrande <colluca@iis.ee.ethz.ch>
 
+#pragma once
+
 #include <stdint.h>
 
 #include "snrt.h"

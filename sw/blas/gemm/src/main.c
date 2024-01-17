@@ -21,16 +21,30 @@ NAMED_DUMP(uint32_t, err, 0x7)
 
 int main() {
     const bool setup_ssr = true;
-    uint32_t start_cycle = snrt_mcycle();
+
+    // load into TCDM
+    uint32_t data_M          = M;
+    uint32_t data_N          = N;
+    uint32_t data_K          = K;
+    uint32_t data_TA         = TA;
+    uint32_t data_TB         = TB;
+    double data_BETA         = BETA;
+    uint32_t data_dtype_size = dtype_size;
+    uint32_t data_expand     = expand;
+    double* data_a           = a;
+    double* data_b           = b;
+    double* data_c           = c;
 
     uint32_t lda = K;
     uint32_t ldb = N;
     uint32_t ldc = N;
 
-    gemm_oc(dtype_size, expand, setup_ssr, TA, TB, M, N, K, 1, a, lda, b, ldb,
-            BETA, c, ldc);
-
-    uint32_t end_cycle = snrt_mcycle();
+    for (volatile int i = 2; i > 0; --i) {
+        if (i == 1) snrt_mcycle(); // start
+        gemm_oc(data_dtype_size, data_expand, setup_ssr, data_TA, data_TB, data_M, data_N, data_K, 1,
+                data_a, lda, data_b, ldb, data_BETA, data_c, ldc);
+        if (i == 1) snrt_mcycle(); // end
+    }
 
     snrt_fpu_fence();
     snrt_global_barrier();
@@ -39,10 +53,11 @@ int main() {
     uint32_t errors = M * N;
 
     if (snrt_global_core_idx() == 0) {
-        for (uint32_t m = 0; m < M; m++) {
-            for (uint32_t n = 0; n < N; n++) {
-                uint32_t idx = m * N + n;
-                if (fabs(result[idx] - c[idx]) < 0.001) errors--;
+        for (uint32_t i = 0; i < M; i++) {
+            for (uint32_t j = 0; j < N; j++) {
+                uint32_t idx = i * N + j;
+                if (fabs(result[idx] - c[idx]) < 0.001)
+                    errors--;
             }
         }
         // printf("%d/%d Errors\n", errors, M * N);
