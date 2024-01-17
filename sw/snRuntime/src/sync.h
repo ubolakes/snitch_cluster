@@ -59,10 +59,8 @@ inline void snrt_cluster_hw_barrier() {
     asm volatile("csrr x0, 0x7C2" ::: "memory");
 }
 
-/// Synchronize clusters globally with a global software barrier
-inline void snrt_global_barrier() {
-    snrt_cluster_hw_barrier();
-
+/// Synchronize all DM cores with a software barrier
+inline void snrt_global_dm_core_barrier() {
     // Synchronize all DM cores in software
     if (snrt_is_dm_core()) {
         // Get barrier in cluster 0 tcdm
@@ -82,8 +80,13 @@ inline void snrt_global_barrier() {
             while (prev_barrier_iteration == tcdm_barrier->iteration);
         }
     }
-    // Synchronize cores in a cluster with the HW barrier
-    snrt_cluster_hw_barrier();
+}
+
+/// Synchronize clusters globally with a global software barrier
+inline void snrt_global_barrier() {
+    snrt_cluster_hw_barrier();       // DM core waits for cluster compute cores to enter
+    snrt_global_dm_core_barrier();   // DM core signals it's cluster is ready and waits for other clusters
+    snrt_cluster_hw_barrier();       // Compute cores wait for DM to exit the barrier
 }
 
 inline uint32_t snrt_global_all_to_all_reduction(uint32_t value) {
