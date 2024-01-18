@@ -141,8 +141,8 @@ void gemm_oc_opt2d(double alpha, double beta, uint32_t m, uint32_t n,
     if (snrt_is_dm_core()) {
         // -- Sync l1 pointers between clusters
         TcdmLayout* l1Ptr[SNRT_CLUSTER_NUM];
-        for (int i = 0; i < SNRT_CLUSTER_NUM; ++i)
-            l1Ptr[i] = l1 + cluster_offset * (i - snrt_cluster_idx());
+        for (int i = 0; i < snrt_cluster_num(); ++i)
+            l1Ptr[i] = (TcdmLayout*)((uint32_t)l1 + cluster_offset * (i - snrt_cluster_idx()));
 
         // 2D pipeline indices, see notes or python notebook for details
         // Works for PI = PJ
