@@ -63,7 +63,7 @@ NAMED_DUMP(TcdmLayout*, l1, 0x8)
 /**
  * \brief Each cluster performs a GEMM for A, B, C inside each TCDM
  */
-void gemm_cluster_kernel(double alpha, double beta, uint32_t M, uint32_t N,
+void gemm_cluster_kernel_baseline(double alpha, double beta, uint32_t M, uint32_t N,
                          uint32_t K, double* const A, double* const B,
                          double* const C, int lda, int ldb, int ldc) {
     uint32_t p[3], P[3];
@@ -85,6 +85,170 @@ void gemm_cluster_kernel(double alpha, double beta, uint32_t M, uint32_t N,
         }
     }
     snrt_fpu_fence();
+}
+
+typedef struct {
+    uint32_t M;
+    uint32_t N;
+    uint32_t K;
+    uint32_t ldA;
+    uint32_t ldB;
+    uint32_t ldC;
+    uint32_t ta;
+    uint32_t tb;
+} GemmInfo;
+
+typedef struct {
+    const double* A;
+    const double* B;
+    double* C;
+    double alpha;
+    double beta;
+} GemmArgs;
+
+void gemm_cluster_kernel_init(const GemmInfo info) {
+    uint32_t p[3], P[3];
+    ocrt_thread_idx(p);
+    ocrt_compute_thread_num(P);
+
+    const uint32_t M   = info.M / P[0];
+    const uint32_t N   = info.N;
+    const uint32_t K   = info.K;
+    const uint32_t ldA = info.ldA * P[0];
+    const uint32_t ldB = info.ldB;
+    const uint32_t ldC = info.ldC * P[0];
+    const uint32_t ta  = info.ta;
+    const uint32_t tb  = info.tb;
+
+    // Unrolling factor of most inner loop.
+    // Should be at least as high as the FMA delay
+    // for maximum utilization
+    const uint32_t unroll = 8;
+
+    // SSR strides and bounds only have to be configured
+    // once in the beginning
+    // First matrix is stored in transposed format
+    if (ta) {
+        const uint32_t ssr0_b[4] = {unroll, K, N / unroll, M};
+        const uint32_t ssr0_i[4] = {0, 8 * ldA, 0, 8 * 8};
+
+        snrt_ssr_loop_3d(SNRT_SSR_DM0, ssr0_b[1], ssr0_b[2], ssr0_b[3],
+                         ssr0_i[1], ssr0_i[2], ssr0_i[3]);
+        snrt_ssr_repeat(SNRT_SSR_DM0, unroll);
+    } else {
+        const uint32_t ssr0_b[4] = {unroll, K, N / unroll, M};
+        const uint32_t ssr0_i[4] = {0, 8, 0, 8 * ldA};
+
+        snrt_ssr_loop_3d(SNRT_SSR_DM0, ssr0_b[1], ssr0_b[2], ssr0_b[3],
+                         ssr0_i[1], ssr0_i[2], ssr0_i[3]);
+        snrt_ssr_repeat(SNRT_SSR_DM0, unroll);
+    }
+
+    // Second matrix is stored in transposed format
+    if (tb) {
+        const uint32_t ssr1_b[4] = {unroll, K, N / unroll, M};
+        const uint32_t ssr1_i[4] = {8 * ldB, 8, 8 * ldB * unroll, 0};
+
+        snrt_ssr_loop_4d(SNRT_SSR_DM1, ssr1_b[0], ssr1_b[1], ssr1_b[2],
+                         ssr1_b[3], ssr1_i[0], ssr1_i[1], ssr1_i[2],
+                         ssr1_i[3]);
+    } else {
+        const uint32_t ssr1_b[4] = {unroll, K, N / unroll, M};
+        const uint32_t ssr1_i[4] = {8, 8 * ldB, 8 * unroll, 0};
+
+        snrt_ssr_loop_4d(SNRT_SSR_DM1, ssr1_b[0], ssr1_b[1], ssr1_b[2],
+                         ssr1_b[3], ssr1_i[0], ssr1_i[1], ssr1_i[2],
+                         ssr1_i[3]);
+    }
+}
+
+extern void gemm_cluster_kernel(const GemmInfo info, const GemmArgs args);
+inline void gemm_cluster_kernel(const GemmInfo info, const GemmArgs args) {
+    uint32_t p[3], P[3];
+    ocrt_thread_idx(p);
+    ocrt_compute_thread_num(P);
+
+    const uint32_t M   = info.M / P[0]; // Compute fraction of C rows every core computes
+    const uint32_t N   = info.N;
+    const uint32_t K   = info.K;
+    const uint32_t ldA = info.ldA * P[0];
+    const uint32_t ldB = info.ldB;
+    const uint32_t ldC = info.ldC * P[0];
+    const uint32_t ta  = info.ta;
+    const uint32_t tb  = info.tb;
+
+    const double* const A = args.A + p[0] * info.ldA;
+    const double* const B = args.B;
+          double* const C = args.C + p[0] * info.ldC;
+    const double alpha    = args.alpha;
+    const double beta     = args.beta;
+    
+    const uint32_t unroll = 8;
+
+    // SSR start address need to be configured each time
+    snrt_ssr_read(SNRT_SSR_DM0, SNRT_SSR_4D, A);
+    snrt_ssr_read(SNRT_SSR_DM1, SNRT_SSR_4D, B);
+    snrt_ssr_enable();
+
+    for (uint32_t m = 0; m < M; m++) {
+        uint32_t n = 0;
+        for (uint32_t n0 = 0; n0 < N / unroll; n0++) {
+            double c[unroll];
+
+            // Load intermediate result
+            c[0] = C[m * ldC + n + 0];
+            c[1] = C[m * ldC + n + 1];
+            c[2] = C[m * ldC + n + 2];
+            c[3] = C[m * ldC + n + 3];
+            c[4] = C[m * ldC + n + 4];
+            c[5] = C[m * ldC + n + 5];
+            c[6] = C[m * ldC + n + 6];
+            c[7] = C[m * ldC + n + 7];
+
+            asm volatile(
+                "frep.o %[n_frep], 8, 0, 0 \n"
+                "fmadd.d %[c0], ft0, ft1, %[c0] \n"
+                "fmadd.d %[c1], ft0, ft1, %[c1] \n"
+                "fmadd.d %[c2], ft0, ft1, %[c2] \n"
+                "fmadd.d %[c3], ft0, ft1, %[c3] \n"
+                "fmadd.d %[c4], ft0, ft1, %[c4] \n"
+                "fmadd.d %[c5], ft0, ft1, %[c5] \n"
+                "fmadd.d %[c6], ft0, ft1, %[c6] \n"
+                "fmadd.d %[c7], ft0, ft1, %[c7] \n"
+                : [ c0 ] "+f"(c[0]), [ c1 ] "+f"(c[1]), [ c2 ] "+f"(c[2]),
+                  [ c3 ] "+f"(c[3]), [ c4 ] "+f"(c[4]), [ c5 ] "+f"(c[5]),
+                  [ c6 ] "+f"(c[6]), [ c7 ] "+f"(c[7])
+                : [ n_frep ] "r"(K - 1)
+                : "ft0", "ft1", "ft2");
+
+            // Store results back
+            C[m * ldC + n + 0] = c[0];
+            C[m * ldC + n + 1] = c[1];
+            C[m * ldC + n + 2] = c[2];
+            C[m * ldC + n + 3] = c[3];
+            C[m * ldC + n + 4] = c[4];
+            C[m * ldC + n + 5] = c[5];
+            C[m * ldC + n + 6] = c[6];
+            C[m * ldC + n + 7] = c[7];
+            n += unroll;
+        }
+
+        // Clean up of leftover columns
+        snrt_ssr_disable();
+
+        for (; n < N; n++) {
+            double c;
+            c = C[m * ldC + n];
+            for (uint32_t k = 0; k < K; k++) {
+                c += A[k + m * ldA] * B[k + n * ldB];
+            }
+            C[m * ldC + n] = c;
+        }
+
+        snrt_ssr_enable();
+    }
+
+    snrt_ssr_disable();
 }
 
 void gemm_oc_opt2d(double alpha, double beta, uint32_t m, uint32_t n,
@@ -147,7 +311,18 @@ void gemm_oc_opt2d(double alpha, double beta, uint32_t m, uint32_t n,
         // dump_p_src(fetch_dram ? -1 : p_srcB);
     }
 
+    GemmInfo tileInfo = {0};
+    tileInfo.M   = L1_M;
+    tileInfo.N   = L1_N;
+    tileInfo.K   = L1_K;
+    tileInfo.ldA = L1_LDA;
+    tileInfo.ldB = L1_LDB;
+    tileInfo.ldC = L1_LDC;
+    tileInfo.ta  = false;
+    tileInfo.tb  = false;
+
     if (snrt_is_compute_core()) {
+        gemm_cluster_kernel_init(tileInfo);
         snrt_global_barrier();  // DMA core is one index ahead
     }
 
@@ -193,11 +368,20 @@ void gemm_oc_opt2d(double alpha, double beta, uint32_t m, uint32_t n,
                 } else {
                     // solve block already in l1, parallelize inside each
                     // cluster
-                    // gemm_cluster_kernel(alpha, beta, L1_M, L1_N, L1_K, l1_A,
+                    // gemm_cluster_kernel_baseline(alpha, beta, L1_M, L1_N, L1_K, l1_A,
                     //                     l1_B, l1_C, L1_LDA, L1_LDB, L1_LDC);
 
-                    gemm(FP64, 0, true, false, false, L1_M, L1_N, L1_K, alpha,
-                         l1_A, L1_LDA, l1_B, L1_LDB, beta, l1_C, L1_LDC);
+                    // gemm(FP64, 0, true, false, false, L1_M, L1_N, L1_K, alpha,
+                    //      l1_A, L1_LDA, l1_B, L1_LDB, beta, l1_C, L1_LDC);
+
+                    GemmArgs tileArgs = {0};
+                    tileArgs.A     = l1_A;
+                    tileArgs.B     = l1_B;
+                    tileArgs.C     = l1_C;
+                    tileArgs.alpha = alpha;
+                    tileArgs.beta  = beta;
+                    
+                    gemm_cluster_kernel(tileInfo, tileArgs);
                 }
 
                 l1Id_AB = !l1Id_AB;  // switch buffers
