@@ -42,9 +42,9 @@ NAMED_DUMP(double, c, 0xc)
     for (; dir ? i <= i##_last : i >= i##_last;                          \
          i = dir ? i + stride : i - stride)
 
-#define L1_M 8  // 128;
-#define L1_N 8  // 128;
-#define L1_K 8  // 128;
+#define L1_M 8
+#define L1_N 8
+#define L1_K 8
 #define L1_LDA L1_K
 #define L1_LDB L1_N
 #define L1_LDC L1_N
@@ -60,8 +60,6 @@ typedef struct {
 
 NAMED_DUMP(TcdmLayout*, l1, 0x8)
 
-TcdmLayout* l1AddrGlobal[SNRT_CLUSTER_NUM] = {0};
-
 /**
  * \brief Each cluster performs a GEMM for A, B, C inside each TCDM
  */
@@ -75,16 +73,11 @@ void gemm_cluster_kernel(double alpha, double beta, uint32_t M, uint32_t N,
     for (uint32_t i = p[0]; i < M; i += P[0]) {
         for (uint32_t j = 0; j < N; j++) {
             uint32_t cIdx = i * ldc + j;  // C[i][j]
-            // dump_cIdx(cIdx);
-            // dump_c(C[cIdx]);
             register double c0 = beta * C[cIdx];
+
             for (uint32_t k = 0; k < K; k++) {
                 uint32_t aIdx = i * lda + k;  // A[i][k]
                 uint32_t bIdx = k * ldb + j;  // B[k][j]
-                // dump_aIdx(aIdx);
-                // dump_bIdx(bIdx);
-                // dump_a(A[aIdx]);
-                // dump_b(B[bIdx]);
 
                 c0 += A[aIdx] * B[bIdx];
             }
@@ -103,8 +96,8 @@ void gemm_oc_opt2d(double alpha, double beta, uint32_t m, uint32_t n,
      * data in advance into the buffer that will be used.
      */
 
-    volatile uint32_t p[3] = {0, 0, 0};
-    volatile uint32_t P[3] = {0, 0, 0};
+    uint32_t p[3] = {0, 0, 0};
+    uint32_t P[3] = {0, 0, 0};
     ocrt_thread_idx(p);
     ocrt_compute_thread_num(P);
 
@@ -126,9 +119,6 @@ void gemm_oc_opt2d(double alpha, double beta, uint32_t m, uint32_t n,
     int ib_prev, jb_prev, kb_prev;
     bool ib_dir = false, jb_dir = false, kb_dir = false;
 
-    // Debug
-    volatile int ib_cnt = 0, jb_cnt = 0, kb_cnt = 0;
-
     bool storeC = false;
 
     // -- Compute C2C sources for 2D pipeline
@@ -146,8 +136,8 @@ void gemm_oc_opt2d(double alpha, double beta, uint32_t m, uint32_t n,
 
         // 2D pipeline indices, see notes or python notebook for details
         // Works for PI = PJ
-        volatile const uint32_t p_srcA = pi * PJ + ((2 * PJ - pi - pk) % PJ);
-        volatile const uint32_t p_srcB = pj + PJ * ((2 * PJ - pj - pk) % PJ);
+        const uint32_t p_srcA = pi * PJ + ((2 * PJ - pi - pk) % PJ);
+        const uint32_t p_srcB = pj + PJ * ((2 * PJ - pj - pk) % PJ);
 
         const bool fetch_dram = pk == 0;
         c2cL1_A = fetch_dram ? NULL : l1Ptr[p_srcA];
@@ -167,9 +157,7 @@ void gemm_oc_opt2d(double alpha, double beta, uint32_t m, uint32_t n,
     }
 
     FOR_EACH(ib, pi, I / L1_M, PI, ib_dir, ib_prev) {
-        ib_cnt += ib;
         FOR_EACH(jb, pj, J / L1_N, PJ, jb_dir, jb_prev) {
-            jb_cnt += jb;
 
             double* const l1_C = l1[l1Id_C].C;
 
@@ -181,7 +169,6 @@ void gemm_oc_opt2d(double alpha, double beta, uint32_t m, uint32_t n,
             }
 
             FOR_EACH(kb, 0, K / L1_K, 1, kb_dir, kb_prev) {
-                kb_cnt += kb;
                 double* const l1_A = l1[l1Id_AB].A;
                 double* const l1_B = l1[l1Id_AB].B;
 
@@ -206,12 +193,11 @@ void gemm_oc_opt2d(double alpha, double beta, uint32_t m, uint32_t n,
                 } else {
                     // solve block already in l1, parallelize inside each
                     // cluster
-                    gemm_cluster_kernel(alpha, beta, L1_M, L1_N, L1_K, l1_A,
-                                        l1_B, l1_C, L1_LDA, L1_LDB, L1_LDC);
+                    // gemm_cluster_kernel(alpha, beta, L1_M, L1_N, L1_K, l1_A,
+                    //                     l1_B, l1_C, L1_LDA, L1_LDB, L1_LDC);
 
-                    // gemm(FP64, 0, true, false, false,
-                    //      L1_M, L1_N, L1_K, alpha,
-                    //      l1_A, L1_LDA, l1_B, L1_LDB, beta, l1_C, L1_LDC);
+                    gemm(FP64, 0, true, false, false, L1_M, L1_N, L1_K, alpha,
+                         l1_A, L1_LDA, l1_B, L1_LDB, beta, l1_C, L1_LDC);
                 }
 
                 l1Id_AB = !l1Id_AB;  // switch buffers
