@@ -97,6 +97,8 @@ def emit_header(**kwargs):
     b = b.T if kwargs['tb'] else b
 
     data_str = [emit_license()]
+    data_str = ["#pragma once"]
+    data_str += [format_scalar_definition('uint32_t', 'bench_iters', kwargs['bench_iters'])]
     data_str += [format_scalar_definition('uint32_t', 'M', kwargs['M'])]
     data_str += [format_scalar_definition('uint32_t', 'N', kwargs['N'])]
     data_str += [format_scalar_definition('uint32_t', 'K', kwargs['K'])]

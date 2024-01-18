@@ -39,15 +39,14 @@ int main() {
     uint32_t ldb = N;
     uint32_t ldc = N;
 
-    for (volatile int i = 2; i > 0; --i) {
+    for (volatile int i = bench_iters; i > 0; --i) {
         if (i == 1) snrt_mcycle(); // start
         gemm_oc(data_dtype_size, data_expand, setup_ssr, data_TA, data_TB, data_M, data_N, data_K, 1,
                 data_a, lda, data_b, ldb, data_BETA, data_c, ldc);
         if (i == 1) snrt_mcycle(); // end
+        snrt_fpu_fence();
+        snrt_global_barrier();
     }
-
-    snrt_fpu_fence();
-    snrt_global_barrier();
 
 #ifdef BIST_COMPUTE
     uint32_t errors = M * N;

@@ -12,6 +12,7 @@
     ta: false,
     tb: true, // must be true for SIMD
     prec: 64,
-    expand: 0
-    linspace: true
+    expand: 0,
+    linspace: true,
+    bench_iters: 2,
 }
