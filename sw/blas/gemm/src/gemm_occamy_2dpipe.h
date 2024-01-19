@@ -326,7 +326,7 @@ void gemm_oc(const GemmInfo info, const GemmArgs args) {
         const uint32_t p_srcA = pi * PJ + ((2 * PJ - pi - pk) % PJ);
         const uint32_t p_srcB = pj + PJ * ((2 * PJ - pj - pk) % PJ);
 
-        const bool fetch_dram = true;//pk == 0;
+        const bool fetch_dram = pk == 0;
         c2cL1_A = fetch_dram ? NULL : l1Ptr[p_srcA];
         c2cL1_B = fetch_dram ? NULL : l1Ptr[p_srcB];
 
