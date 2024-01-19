@@ -38,14 +38,11 @@ def format_roi(roi, label):
     }
 
 
-def get_roi(data, thread, idx):
-    thread_type, thread_idx = thread.split('_')
-    thread_idx = int(thread_idx)
-    thread_data = data[thread]
+def get_rois(thread_data, thread_type):
     if thread_type == "hart":
-        return thread_data[idx]
+        return thread_data
     elif thread_type == "dma":
-        return thread_data["transfers"][idx]
+        return thread_data["transfers"]
     else:
         raise ValueError(f"Unsupported thread type {thread_type}")
 
@@ -55,11 +52,19 @@ def filter_and_label_rois(data, spec):
     # Iterate all threads in the rendered specification
     for thread_spec in spec:
         thread = thread_spec['thread']
+        thread_type, thread_idx = thread.split('_')
+        thread_idx = int(thread_idx)
+        thread_data = data[thread]
+        
         output_rois = []
         # Iterate all ROIs to keep for the current thread
-        for roi in thread_spec['roi']:
-            output_roi = format_roi(get_roi(data, thread, roi['idx']), roi['label'])
-            output_rois.append(output_roi)
+        if thread_spec['roi'] == '*':
+            for i in get_rois(thread_data, thread_type):
+                output_rois.append(format_roi(i, thread))
+        else:
+            for roi in thread_spec['roi']:
+                output_roi = format_roi(get_rois(thread_data, thread_type)[roi['idx']], roi['label'])
+                output_rois.append(output_roi)
         # Add ROIs for current thread to output, if any
         if output_rois:
             output[thread] = output_rois

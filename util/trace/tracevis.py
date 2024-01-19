@@ -195,6 +195,8 @@ def offload_lookahead(lines, **kwargs):
             if match:
                 (time, cyc, priv, cmt) = tuple(
                     [match.group(i+1).strip() for i in range(re_acc_line.groups)])
+            else:
+                (time, cyc, priv, cmt) = (0,0,0,'')
 
         time = int(time) if use_time else int(cyc)
 
