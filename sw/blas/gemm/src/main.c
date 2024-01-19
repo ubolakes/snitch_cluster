@@ -23,26 +23,32 @@ int main() {
     const bool setup_ssr = true;
 
     // load into TCDM
-    uint32_t data_M          = M;
-    uint32_t data_N          = N;
-    uint32_t data_K          = K;
-    uint32_t data_TA         = TA;
-    uint32_t data_TB         = TB;
-    double data_BETA         = BETA;
-    uint32_t data_dtype_size = dtype_size;
-    uint32_t data_expand     = expand;
-    double* data_a           = a;
-    double* data_b           = b;
-    double* data_c           = c;
-
     uint32_t lda = K;
     uint32_t ldb = N;
     uint32_t ldc = N;
 
+    GemmInfo gemmInfo = {0};
+    gemmInfo.M   = M;
+    gemmInfo.N   = N;
+    gemmInfo.K   = K;
+    gemmInfo.lda = lda;
+    gemmInfo.ldb = ldb;
+    gemmInfo.ldc = ldc;
+    gemmInfo.ta  = TA;
+    gemmInfo.tb  = TB;
+    
+    GemmArgs gemmArgs = {0};
+    gemmArgs.A     = a;
+    gemmArgs.B     = b;
+    gemmArgs.C     = c;
+    gemmArgs.alpha = 1;
+    gemmArgs.beta  = BETA;
+
     for (volatile int i = bench_iters; i > 0; --i) {
         if (i == 1) snrt_mcycle(); // start
-        gemm_oc(data_dtype_size, data_expand, setup_ssr, data_TA, data_TB, data_M, data_N, data_K, 1,
-                data_a, lda, data_b, ldb, data_BETA, data_c, ldc);
+        gemm_oc(gemmInfo, gemmArgs);
+        // gemm_oc(data_dtype_size, data_expand, setup_ssr, data_TA, data_TB, data_M, data_N, data_K, 1,
+        //         data_a, lda, data_b, ldb, data_BETA, data_c, ldc);
         if (i == 1) snrt_mcycle(); // end
         snrt_fpu_fence();
         snrt_global_barrier();
