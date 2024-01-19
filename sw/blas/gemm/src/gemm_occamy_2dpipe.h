@@ -206,14 +206,28 @@ inline void gemm_cluster_kernel(const GemmInfo info, const GemmArgs args) {
 
             // Load intermediate result
             const uint32_t cIdx = m * ldc + n;
-            c[0] = C[cIdx + 0];
-            c[1] = C[cIdx + 1];
-            c[2] = C[cIdx + 2];
-            c[3] = C[cIdx + 3];
-            c[4] = C[cIdx + 4];
-            c[5] = C[cIdx + 5];
-            c[6] = C[cIdx + 6];
-            c[7] = C[cIdx + 7];
+            if (beta != 0.0) {
+                snrt_ssr_disable(); // Need to disable ssr to use ft0, ft1 for fmul
+                c[0] = beta * C[cIdx + 0];
+                c[1] = beta * C[cIdx + 1];
+                c[2] = beta * C[cIdx + 2];
+                c[3] = beta * C[cIdx + 3];
+                c[4] = beta * C[cIdx + 4];
+                c[5] = beta * C[cIdx + 5];
+                c[6] = beta * C[cIdx + 6];
+                c[7] = beta * C[cIdx + 7];
+                snrt_ssr_enable();
+            }
+            else {
+                c[0] = 0.0;
+                c[1] = 0.0;
+                c[2] = 0.0;
+                c[3] = 0.0;
+                c[4] = 0.0;
+                c[5] = 0.0;
+                c[6] = 0.0;
+                c[7] = 0.0;
+            }
 
             asm volatile(
                 "frep.o %[n_frep], 8, 0, 0 \n"
