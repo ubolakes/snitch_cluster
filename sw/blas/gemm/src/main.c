@@ -23,6 +23,8 @@ int main() {
     const bool setup_ssr = true;
 
     // load into TCDM
+    uint32_t iters = bench_iters;
+
     uint32_t lda = K;
     uint32_t ldb = N;
     uint32_t ldc = N;
