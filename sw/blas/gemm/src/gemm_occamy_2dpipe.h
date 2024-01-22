@@ -195,8 +195,8 @@ inline void gemm_cluster_kernel(const GemmInfo info, const GemmArgs args) {
     const uint32_t unroll = 8;
 
     // SSR start address need to be configured each time
-    snrt_ssr_read(SNRT_SSR_DM0, SNRT_SSR_4D, A);
-    snrt_ssr_read(SNRT_SSR_DM1, SNRT_SSR_4D, B);
+    snrt_ssr_read(SNRT_SSR_DM0, SNRT_SSR_4D, (void*) A);
+    snrt_ssr_read(SNRT_SSR_DM1, SNRT_SSR_4D, (void*) B);
 
     for (uint32_t m = 0; m < M; m++) {
         uint32_t n = 0;
@@ -262,6 +262,7 @@ inline void gemm_cluster_kernel(const GemmInfo info, const GemmArgs args) {
 
 #define IS_DM_CORE true
 #include "gemm_occamy_2dpipe_tpl.h"
+#undef IS_DM_CORE
 #define IS_DM_CORE false
 #include "gemm_occamy_2dpipe_tpl.h"
 #undef IS_DM_CORE

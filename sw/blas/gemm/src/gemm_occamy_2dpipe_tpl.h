@@ -106,7 +106,7 @@ void gemm_oc_compute
             if (IS_DM_CORE) {
                 dump_ib(ib);
                 dump_jb(jb);
-                snrt_dma_load_2d_tile(l1_C, C, ib, jb, L1_M, L1_N, ldc, FP64);
+                snrt_dma_load_2d_tile(l1_C, (void*) C, ib, jb, L1_M, L1_N, ldc, FP64);
                 if (ib_prev >= 0 /* && jb_prev >= 0 */) storeC = true;
             }
 
@@ -127,7 +127,7 @@ void gemm_oc_compute
                     dump_kb(kb);
                     if (loadA) {
                         if (c2cL1_A == NULL)
-                            snrt_dma_load_2d_tile(l1_A, A, ib, kb, L1_M, L1_K, lda,
+                            snrt_dma_load_2d_tile(l1_A, (void*) A, ib, kb, L1_M, L1_K, lda,
                                                 FP64);
                         else {
                             double* const c2c_A = c2cL1_A[l1Id_A].A;
@@ -136,7 +136,7 @@ void gemm_oc_compute
                     }
                     if (loadB) {
                         if (c2cL1_B == NULL)
-                            snrt_dma_load_2d_tile(l1_B, B, kb, jb, L1_K, L1_N, ldb,
+                            snrt_dma_load_2d_tile(l1_B, (void*) B, kb, jb, L1_K, L1_N, ldb,
                                                 FP64);
                         else {
                             double* const c2c_B = c2cL1_B[l1Id_B].B;
