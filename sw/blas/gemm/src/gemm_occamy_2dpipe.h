@@ -267,10 +267,10 @@ inline void gemm_cluster_kernel(const GemmInfo info, const GemmArgs args) {
 #include "gemm_occamy_2dpipe_tpl.h"
 #undef IS_DM_CORE
 
-void gemm_oc (const GemmInfo info, const GemmArgs args) {
+void gemm_oc (const GemmInfo info, const GemmArgs args, bool bench) {
     if (snrt_is_dm_core()) {
-        gemm_oc_dm(info, args);
+        gemm_oc_dm(info, args, bench);
     } else {
-        gemm_oc_compute(info, args);
+        gemm_oc_compute(info, args, bench);
     }
 }

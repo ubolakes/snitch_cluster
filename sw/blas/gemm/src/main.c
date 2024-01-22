@@ -45,8 +45,8 @@ int main() {
     gemmArgs.beta  = BETA;
 
     for (volatile int i = bench_iters; i > 0; --i) {
-        if (i == 1) snrt_mcycle(); // start
-        gemm_oc(gemmInfo, gemmArgs);
+        // if (i == 1) snrt_mcycle(); // start
+        gemm_oc(gemmInfo, gemmArgs, i == 1);
         // gemm_oc(data_dtype_size, data_expand, setup_ssr, data_TA, data_TB, data_M, data_N, data_K, 1,
         //         data_a, lda, data_b, ldb, data_BETA, data_c, ldc);
         if (i == 1) snrt_mcycle(); // end

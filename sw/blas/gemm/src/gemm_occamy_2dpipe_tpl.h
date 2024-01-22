@@ -5,7 +5,7 @@ void gemm_oc_dm
 #else
 void gemm_oc_compute
 #endif
-(const GemmInfo info, const GemmArgs args) {
+(const GemmInfo info, const GemmArgs args, const bool bench) {
     
     /**
      * Problem is double buffered in L1. The buffer that is used is toggled at
@@ -88,6 +88,8 @@ void gemm_oc_compute
     tileInfo.ldc = L1_LDC;
     tileInfo.ta  = false;
     tileInfo.tb  = false;
+
+    if (bench) snrt_mcycle();
 
     if (!IS_DM_CORE) {
         gemm_cluster_kernel_init(tileInfo);
