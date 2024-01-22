@@ -321,9 +321,6 @@ module axi_dma_backend #(
         automatic logic   [DataWidth-1:0] dma_data_path [string];
         automatic string                  dma_string;
 
-        // start of python dict
-        dma_string = "{";
-
         // we do not dump while reset
         if (rst_ni) begin
 
@@ -554,15 +551,18 @@ module axi_dma_backend #(
           // "data_path_buffer_clean"      : i_axi_dma_data_mover.i_axi_dma_data_path.buffer_clean
           };
 
-          // write dicts to string
-          foreach (dma_meta[key])
-            dma_string = $sformatf("%s'%s': 0x%0x, ", dma_string, key, dma_meta[key]);
           // only write bulk of data if dma is actually active :)
           if (!backend_idle_o | valid_i & ready_o |
                     i_axi_dma_burst_reshaper.valid_i & i_axi_dma_burst_reshaper.ready_o |
                     i_axi_dma_burst_reshaper.burst_q.src.valid |
                     i_axi_dma_burst_reshaper.burst_q.dst.valid |
                     trans_complete_o) begin
+            // start of python dict
+            dma_string = "{";
+            
+            // write dicts to string
+            foreach (dma_meta[key])
+              dma_string = $sformatf("%s'%s': 0x%0x, ", dma_string, key, dma_meta[key]);
             foreach (dma_backend[key])
               dma_string = $sformatf("%s'%s': 0x%0x, ", dma_string, key, dma_backend[key]);
             foreach (dma_burst_res[key])
@@ -582,10 +582,11 @@ module axi_dma_backend #(
             //         );
             //     end
             // end
+
+            dma_string = $sformatf("%s}", dma_string);
+            $fwrite(f, dma_string);
+            $fwrite(f, "\n");
           end
-          dma_string = $sformatf("%s}", dma_string);
-          $fwrite(f, dma_string);
-          $fwrite(f, "\n");
         end
       end
       // close the file
