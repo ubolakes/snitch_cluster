@@ -6,58 +6,7 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "gemm_kernel.h"
-#include "snrt.h"
-
-#include "dump.h"
-NAMED_DUMP(uint32_t, aIdx, 0x1a)
-NAMED_DUMP(uint32_t, bIdx, 0x1b)
-NAMED_DUMP(uint32_t, cIdx, 0x1c)
-NAMED_DUMP(uint32_t, ib, 0x10)
-NAMED_DUMP(uint32_t, jb, 0x11)
-NAMED_DUMP(uint32_t, kb, 0x12)
-NAMED_DUMP(uint32_t, pk, 0x13)
-NAMED_DUMP(uint32_t, p_src, 0x14)
-NAMED_DUMP(double, a, 0xa)
-NAMED_DUMP(double, b, 0xb)
-NAMED_DUMP(double, c, 0xc)
-
-/**
- * \brief Implements a reversing loop for an index range
- * \param begin Beginning of the range
- * \param end End of the range
- * \param dir Sets the direction of traversal. True: loop starts at begin.
- * \param i_prev Set the previous index to the first index, must update this
- * manually at the end of the loop. \details i_end_floor will contain the exact
- * end with the stride, s.t. the reversed loop starts at the correct index.
- */
-#define FOR_EACH(i, begin, end, stride, dir, i_prev)                     \
-    dir = !dir;                                                          \
-    const int i##_end_floor =                                            \
-        ((end - begin + stride - 1) / stride) * stride - stride + begin; \
-    const int i##_first = dir ? begin : i##_end_floor;                   \
-    const int i##_last = dir ? i##_end_floor : begin;                    \
-    i = i##_first;                                                       \
-    for (; dir ? i <= i##_last : i >= i##_last;                          \
-         i = dir ? i + stride : i - stride)
-
-#define L1_M 8
-#define L1_N 8
-#define L1_K 8
-#define L1_LDA L1_K
-#define L1_LDB L1_N
-#define L1_LDC L1_N
-
-/**
- * \brief Maps the layout of the TCDM. May be double buffered.
- */
-typedef struct {
-    double A[L1_M * L1_K];
-    double B[L1_K * L1_N];
-    double C[L1_M * L1_N];
-} TcdmLayout;
-
-NAMED_DUMP(TcdmLayout*, l1, 0x8)
+#include "gemm_decls.h"
 
 /**
  * \brief Each cluster performs a GEMM for A, B, C inside each TCDM
@@ -85,27 +34,6 @@ void gemm_cluster_kernel_baseline(double alpha, double beta, uint32_t M, uint32_
     }
     snrt_fpu_fence();
 }
-
-/// Constants related to a GEMM computation to precompute and initialize
-typedef struct {
-    uint32_t M;
-    uint32_t N;
-    uint32_t K;
-    uint32_t lda;
-    uint32_t ldb;
-    uint32_t ldc;
-    uint32_t ta;
-    uint32_t tb;
-} GemmInfo;
-
-/// Arguments to execute a GEMM computation, given a corresponding GemmInfo instance
-typedef struct {
-    const double* A;
-    const double* B;
-    double* C;
-    double alpha;
-    double beta;
-} GemmArgs;
 
 extern void gemm_cluster_kernel_init(const GemmInfo info);
 inline void gemm_cluster_kernel_init(const GemmInfo info) {
@@ -260,12 +188,20 @@ inline void gemm_cluster_kernel(const GemmInfo info, const GemmArgs args) {
     snrt_fpu_fence();
 }
 
+// Instantiate template code
+#define USE_C2C_TILES true
+#define FLOAT_T double
+
 #define IS_DM_CORE true
 #include "gemm_occamy_2dpipe_tpl.h"
 #undef IS_DM_CORE
+
 #define IS_DM_CORE false
 #include "gemm_occamy_2dpipe_tpl.h"
 #undef IS_DM_CORE
+
+#undef FLOAT_T
+#undef USE_C2C_TILES
 
 void gemm_oc (const GemmInfo info, const GemmArgs args, bool bench) {
     if (snrt_is_dm_core()) {

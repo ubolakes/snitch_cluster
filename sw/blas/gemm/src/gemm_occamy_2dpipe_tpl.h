@@ -1,3 +1,11 @@
+#ifndef FLOAT_T 
+#error "Define FLOAT_T to use this template."
+#endif
+
+#ifndef USE_C2C_TILES
+#error "Define USE_C2C_TILES to use this template."
+#endif
+
 #ifndef IS_DM_CORE
 #error "Define IS_DM_CORE to use this template."
 #elif IS_DM_CORE==true
@@ -22,11 +30,11 @@ void gemm_oc_compute
     const uint32_t ta  = info.ta;
     const uint32_t tb  = info.tb;
 
-    const double* const A = args.A;
-    const double* const B = args.B;
-          double* const C = args.C;
-    const double alpha    = args.alpha;
-    const double beta     = args.beta;
+    const FLOAT_T* const A = args.A;
+    const FLOAT_T* const B = args.B;
+          FLOAT_T* const C = args.C;
+    const FLOAT_T alpha    = args.alpha;
+    const FLOAT_T beta     = args.beta;
 
     uint32_t p[3] = {0, 0, 0};
     uint32_t P[3] = {0, 0, 0};
@@ -54,8 +62,8 @@ void gemm_oc_compute
     bool storeC = false;
 
     // -- Compute C2C sources for 2D pipeline
-    const uint32_t pk = (PI + 2 * PJ - pi - pj - 1) % PJ; // pipeline step
-    const int PK      = PJ;                               // pipeline depth
+    const uint32_t pk = USE_C2C_TILES ? (PI + 2 * PJ - pi - pj - 1) % PJ : 0; // pipeline step
+    const int PK      = USE_C2C_TILES ? PJ : 1;                               // pipeline depth
 
     // Determine C2C source cluster index for each matrix, < 0 is from DRAM
     TcdmLayout* c2cL1_A = NULL;
@@ -103,7 +111,7 @@ void gemm_oc_compute
 
     FOR_EACH(ib, pi, M / L1_M, PI, ib_dir, ib_prev) {
         FOR_EACH(jb, pj, N / L1_N, PJ, jb_dir, jb_prev) {
-            double* const l1_C = l1[l1Id_C].C;
+            FLOAT_T* const l1_C = l1[l1Id_C].C;
 
             if (IS_DM_CORE) {
                 dump_ib(ib);
@@ -122,8 +130,8 @@ void gemm_oc_compute
                 if (loadA) l1Id_A = !l1Id_A;
                 if (loadB) l1Id_B = !l1Id_B;
 
-                double* const l1_A = l1[l1Id_A].A;
-                double* const l1_B = l1[l1Id_B].B;
+                FLOAT_T* const l1_A = l1[l1Id_A].A;
+                FLOAT_T* const l1_B = l1[l1Id_B].B;
 
                 if (IS_DM_CORE) {
                     dump_kb(kb);
@@ -132,7 +140,7 @@ void gemm_oc_compute
                             snrt_dma_load_2d_tile(l1_A, (void*) A, ib, kb, L1_M, L1_K, lda,
                                                 FP64);
                         else {
-                            double* const c2c_A = c2cL1_A[l1Id_A].A;
+                            FLOAT_T* const c2c_A = c2cL1_A[l1Id_A].A;
                             snrt_dma_start_1d(l1_A, c2c_A, L1_M * L1_K * FP64);
                         }
                     }
@@ -141,7 +149,7 @@ void gemm_oc_compute
                             snrt_dma_load_2d_tile(l1_B, (void*) B, kb, jb, L1_K, L1_N, ldb,
                                                 FP64);
                         else {
-                            double* const c2c_B = c2cL1_B[l1Id_B].B;
+                            FLOAT_T* const c2c_B = c2cL1_B[l1Id_B].B;
                             snrt_dma_start_1d(l1_B, c2c_B, L1_K * L1_N * FP64);
                         }
                     }
@@ -166,7 +174,10 @@ void gemm_oc_compute
                     gemm_cluster_kernel(tileInfo, tileArgs);
                 }
 
-                snrt_global_barrier();
+                if (USE_C2C_TILES)
+                    snrt_global_barrier();
+                else
+                    snrt_cluster_hw_barrier();
 
                 if (IS_DM_CORE) {
                     if (storeC) {
