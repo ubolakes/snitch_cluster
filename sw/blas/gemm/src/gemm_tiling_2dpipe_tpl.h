@@ -8,18 +8,25 @@
 
 #ifndef IS_DM_CORE
 #error "Define IS_DM_CORE to use this template."
-#elif IS_DM_CORE==true
-void gemm_oc_dm
-#else
-void gemm_oc_compute
 #endif
-(const GemmInfo info, const GemmArgs args, const bool bench) {
+
+#include "gemm_kernel.h"
+
+#ifndef SNBLAS_GEMM_TILING
+#define SNBLAS_GEMM_TILING(is_dm_core, float_t) CONCAT3(gemm_, is_dm_core, float_t)
+#endif
+
+void SNBLAS_GEMM_TILING(IS_DM_CORE, FLOAT_T) (const SnblasGemmInfo info, const SNBLAS_GEMM_ARGS(FLOAT_T) args, const bool bench) {
     
     /**
      * Problem is double buffered in L1. The buffer that is used is toggled at
      * each iteration. The DMA cores are one index step ahead so they load the
      * data in advance into the buffer that will be used.
      */
+
+    typedef SNBLAS_GEMM_TCDM(FLOAT_T) TcdmLayout;
+    typedef SnblasGemmInfo GemmInfo;
+    typedef SNBLAS_GEMM_ARGS(FLOAT_T) GemmArgs;
 
     const uint32_t M   = info.M;
     const uint32_t N   = info.N;
@@ -100,7 +107,7 @@ void gemm_oc_compute
     if (bench) snrt_mcycle();
 
     if (!IS_DM_CORE) {
-        gemm_cluster_kernel_init(tileInfo);
+        SNBLAS_GEMM_CLUSTER_KERNEL_INIT(FLOAT_T)(tileInfo);
         snrt_global_barrier();  // DMA core is one index ahead
     }
 
@@ -171,7 +178,7 @@ void gemm_oc_compute
                     tileArgs.alpha = alpha;
                     tileArgs.beta  = beta;
                     
-                    gemm_cluster_kernel(tileInfo, tileArgs);
+                    SNBLAS_GEMM_CLUSTER_KERNEL_COMPUTE(FLOAT_T)(tileInfo, tileArgs);
                 }
 
                 if (USE_C2C_TILES)
@@ -205,7 +212,7 @@ void gemm_oc_compute
             snrt_dma_wait_all();
         // }
     } else {
-        gemm_cluster_kernel_deinit(tileInfo);
+        SNBLAS_GEMM_CLUSTER_KERNEL_DEINIT(FLOAT_T)(tileInfo);
     }
 
     // Wait for pipeline to be emptied
