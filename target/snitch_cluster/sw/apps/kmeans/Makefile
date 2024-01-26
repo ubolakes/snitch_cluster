@@ -1,7 +1,10 @@
 # Copyright 2024 ETH Zurich and University of Bologna.
 # Licensed under the Apache License, Version 2.0, see LICENSE for details.
 # SPDX-License-Identifier: Apache-2.0
+#
+# Luca Colagrande <colluca@iis.ee.ethz.ch>
 
-runs:
-  - elf: apps/kmeans/build/kmeans.elf
-    cmd: [../../../sw/apps/kmeans/verify.py, "${sim_bin}", "${elf}"]
+include ../../../../../sw/apps/kmeans/Makefile
+include ../common.mk
+
+$(DEP): $(DATA_H)

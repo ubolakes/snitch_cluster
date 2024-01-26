@@ -8,14 +8,17 @@ editorconfig-checker==2.3.51
 flake8
 gitpython
 hjson
+json5
 jsonref
 jsonschema
 mako
+matplotlib
 progressbar2
 tabulate
 yamllint
 pyyaml
 pytablewriter
+scikit-learn
 termcolor
 pandas
 pyelftools
