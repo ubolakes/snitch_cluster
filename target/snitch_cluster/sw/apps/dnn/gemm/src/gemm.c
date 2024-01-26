@@ -23,8 +23,6 @@
 
 #define CHECK_RESULT
 
-void *share_ptr;
-
 int main() {
     gemm_l.A = (void *)gemm_A_dram;
     gemm_l.B = (void *)gemm_B_dram;
@@ -48,16 +46,7 @@ int main() {
 
     uint32_t total_size = mat_A_size + mat_B_size + mat_C_size;
 
-    void *ptr;
-
-    if (compute_id == 0) {
-        ptr = snrt_l1alloc(total_size);
-        share_ptr = ptr;
-    }
-
-    snrt_cluster_hw_barrier();
-
-    ptr = share_ptr;
+    void *ptr = snrt_l1_alloc_cluster_local(total_size, sizeof(double));
 
     mat_A = ptr;
     ptr += (l1_gemm_l.M * (l1_gemm_l.K + MAT_ROW_PADDING) + MAT_PADDING) *

@@ -7,8 +7,6 @@
 
 #include "data.h"
 
-void *share_ptr;
-
 int main() {
     uint32_t ifmap_size = (k.dim_in_x + k.padding_x_left + k.padding_x_right) *
                           (k.dim_in_y + k.padding_y_top + k.padding_y_bottom) *
@@ -20,16 +18,8 @@ int main() {
     uint32_t total_size =
         ifmap_size + weights_size + k.ch_out + k.ch_out + ofmap_size;
 
-    float *ptr;
-
-    if (snrt_is_dm_core() == 0) {
-        ptr = snrt_l1alloc(total_size * sizeof(float));
-        share_ptr = ptr;
-    }
-
-    snrt_cluster_hw_barrier();
-
-    ptr = share_ptr;
+    float *ptr =
+        snrt_l1_alloc_cluster_local(total_size * sizeof(float), sizeof(float));
 
     float *pInBuffer = ptr;
     ptr += ifmap_size;

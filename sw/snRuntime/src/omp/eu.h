@@ -163,9 +163,10 @@ inline uint32_t eu_get_workers_in_wfi() {
  * @brief Initialize the event unit
  */
 inline void eu_init(void) {
+    void *tmp = snrt_l1_alloc_cluster_local(sizeof(eu_t), sizeof(uint64_t));
     if (snrt_cluster_core_idx() == 0) {
         // Allocate the eu struct in L1 for fast access
-        eu_p = snrt_l1alloc(sizeof(eu_t));
+        eu_p = (eu_t *)tmp;
         snrt_memset((void *)eu_p, 0, sizeof(eu_t));
         // store copy of eu_p on shared memory
         eu_p_global = eu_p;

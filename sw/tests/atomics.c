@@ -181,11 +181,12 @@ int main() {
     uint32_t core_num = snrt_cluster_core_num();
     uint32_t nerrors = 0;
 
+    volatile uint32_t* l1_a = snrt_l1_alloc_cluster_local(
+        NUM_TCDM_LOCATIONS * sizeof(uint32_t), sizeof(uint32_t));
+
     if (core_id == 0) {
-        volatile uint32_t* l1_a =
-            snrt_l1alloc(NUM_TCDM_LOCATIONS * sizeof(uint32_t));
         volatile uint32_t* l3_a =
-            snrt_l3alloc(NUM_SPM_LOCATIONS * sizeof(uint32_t));
+            snrt_l3_alloc(NUM_SPM_LOCATIONS * sizeof(uint32_t));
 
         // In TCDM
         uint32_t tcdm_atomics[NUM_TCDM_LOCATIONS];

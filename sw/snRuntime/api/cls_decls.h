@@ -4,7 +4,6 @@
 
 typedef struct {
     uint32_t hw_barrier;
-    snrt_allocator_t l1_allocator;
 } cls_t;
 
 inline cls_t* cls();

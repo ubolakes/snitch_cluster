@@ -151,13 +151,14 @@ inline void wake_dm(void) {
  */
 inline void dm_init(void) {
     // create a data mover instance
+    void *tmp = snrt_l1_alloc_cluster_local(sizeof(dm_t), sizeof(uint64_t));
     if (snrt_is_dm_core()) {
 #ifdef DM_USE_GLOBAL_CLINT
         snrt_interrupt_enable(IRQ_M_SOFT);
 #else
         snrt_interrupt_enable(IRQ_M_CLUSTER);
 #endif
-        dm_p = (dm_t *)snrt_l1alloc(sizeof(dm_t));
+        dm_p = (dm_t *)tmp;
         snrt_memset((void *)dm_p, 0, sizeof(dm_t));
         dm_p_global = dm_p;
     } else {
