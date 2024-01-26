@@ -55,6 +55,7 @@ APPS += sw/apps/montecarlo/pi_estimation
 APPS += sw/apps/atax
 APPS += sw/apps/correlation
 APPS += sw/apps/covariance
+APPS += sw/apps/kmeans
 
 SUBDIRS = sw/runtime/banshee sw/runtime/rtl sw/math $(APPS) sw/tests
 
