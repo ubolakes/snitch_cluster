@@ -4,8 +4,7 @@
 #
 # Luca Colagrande <colluca@iis.ee.ethz.ch>
 
-SUBDIRS  = lto
-SUBDIRS += nop
+SUBDIRS  = nop
 SUBDIRS += blas/axpy
 SUBDIRS += blas/gemm
 SUBDIRS += dnn/batchnorm
