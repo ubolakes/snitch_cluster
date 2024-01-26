@@ -925,9 +925,9 @@ void gemm(precision_t prec, uint32_t expand, uint32_t setup_ssr,
                     frac_m, n, k, (__fp16*)a + offsetA, lda_strided, (__fp16*)b,
                     ldb, (__fp16*)c + offsetC, ldc_strided, &alpha, setup_ssr);
             } else {
-                gemm_fp16_opt(frac_m, n, k, (__fp16*)a + offsetA, lda_strided,
-                              (__fp16*)b, ldb, (__fp16*)c + offsetC,
-                              ldc_strided, &alpha, setup_ssr);
+                gemm_fp16_opt(
+                    frac_m, n, k, (__fp16*)a + offsetA, lda_strided, (__fp16*)b, 
+                    ldb, (__fp16*)c + offsetC, ldc_strided, &alpha, setup_ssr);
             }
             break;
         case FP8:
