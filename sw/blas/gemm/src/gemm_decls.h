@@ -13,17 +13,28 @@ NAMED_DUMP(double, a, 0xa)
 NAMED_DUMP(double, b, 0xb)
 NAMED_DUMP(double, c, 0xc)
 
+#define CONCAT(a,b) a ## b
+#define CONCAT3(a,b,c) a ## b ## c
+
 #ifndef PRECISION_T
 #define PRECISION_T
 typedef enum { FP64 = 8, FP32 = 4, FP16 = 2, FP8 = 1 } precision_t;
 
-typedef float v2f32 __attribute__((vector_size(8)));
-typedef __fp16 v4f16 __attribute__((vector_size(8)));
-typedef char v8f8 __attribute__((vector_size(8)));
+typedef double fp64;
+typedef float  fp32;
+typedef __fp16 fp16;
+typedef char   fp8;
+
+typedef fp32 v2f32 __attribute__((vector_size(8)));
+typedef fp16 v4f16 __attribute__((vector_size(8)));
+typedef fp8  v8f8  __attribute__((vector_size(8)));
+
+#define VECTOR_SIZE(type) 8 / sizeof(type)
 #endif
 
 /// Constants related to a GEMM computation to precompute and initialize
 typedef struct {
+    precision_t prec;
     uint32_t M;
     uint32_t N;
     uint32_t K;
@@ -32,17 +43,7 @@ typedef struct {
     uint32_t ldc;
     uint32_t ta;
     uint32_t tb;
-    precision_t prec;
-} GemmInfo;
-
-/// Arguments to execute a GEMM computation, given a corresponding GemmInfo instance
-typedef struct {
-    const double* A;
-    const double* B;
-    double* C;
-    double alpha;
-    double beta;
-} GemmArgs;
+} SnblasGemmInfo;
 
 #define L1_M 8
 #define L1_N 8
@@ -51,17 +52,21 @@ typedef struct {
 #define L1_LDB L1_N
 #define L1_LDC L1_N
 
-/**
- * \brief Maps the layout of the TCDM. May be double buffered.
- */
-typedef struct {
-    double A[L1_M * L1_K];
-    double B[L1_K * L1_N];
-    double C[L1_M * L1_N];
-} TcdmLayout;
+#define FLOAT_T fp64
+#include "gemm_decls_tpl.h"
+#undef FLOAT_T
 
-NAMED_DUMP(TcdmLayout*, l1, 0x8)
+#define FLOAT_T fp32
+#include "gemm_decls_tpl.h"
+#undef FLOAT_T
 
+#define FLOAT_T fp16
+#include "gemm_decls_tpl.h"
+#undef FLOAT_T
+
+#define FLOAT_T fp8
+#include "gemm_decls_tpl.h"
+#undef FLOAT_T
 
 /**
  * \brief Implements a reversing loop for an index range
