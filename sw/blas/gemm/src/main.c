@@ -29,7 +29,7 @@ int main() {
     uint32_t ldb = N;
     uint32_t ldc = N;
 
-    GemmInfo gemmInfo = {0};
+    SnblasGemmInfo gemmInfo = {0};
     gemmInfo.M   = M;
     gemmInfo.N   = N;
     gemmInfo.K   = K;
@@ -39,7 +39,7 @@ int main() {
     gemmInfo.ta  = TA;
     gemmInfo.tb  = TB;
     
-    GemmArgs gemmArgs = {0};
+    SNBLAS_GEMM_ARGS(DTYPE) gemmArgs = {0};
     gemmArgs.A     = a;
     gemmArgs.B     = b;
     gemmArgs.C     = c;
@@ -48,7 +48,7 @@ int main() {
 
     for (volatile int i = iters; i > 0; --i) {
         // if (i == 1) snrt_mcycle(); // start
-        gemm_oc(gemmInfo, gemmArgs, i == 1);
+        SNBLAS_GEMM(DTYPE)(gemmInfo, gemmArgs, i == 1);
         // gemm_oc(data_dtype_size, data_expand, setup_ssr, data_TA, data_TB, data_M, data_N, data_K, 1,
         //         data_a, lda, data_b, ldb, data_BETA, data_c, ldc);
         if (i == 1) snrt_mcycle(); // end

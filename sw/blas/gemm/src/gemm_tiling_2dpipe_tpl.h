@@ -13,7 +13,7 @@
 #include "gemm_kernel.h"
 
 #ifndef SNBLAS_GEMM_TILING
-#define SNBLAS_GEMM_TILING(is_dm_core, float_t) CONCAT3(gemm_, is_dm_core, float_t)
+#define SNBLAS_GEMM_TILING(is_dm_core, float_t) CONCAT3(snblas_gemm_, is_dm_core, float_t)
 #endif
 
 void SNBLAS_GEMM_TILING(IS_DM_CORE, FLOAT_T) (const SnblasGemmInfo info, const SNBLAS_GEMM_ARGS(FLOAT_T) args, const bool bench) {
