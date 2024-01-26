@@ -6,7 +6,7 @@
 name: build-docker
 on:
   push:
-    branches: [tracer/dma]
+    branches: [sw/kmeans]
   workflow_dispatch:
 jobs:
   build-docker:
@@ -39,6 +39,6 @@ jobs:
           context: .
           file: util/container/Dockerfile
           push: true
-          tags: ghcr.io/pulp-platform/snitch_cluster:tracer-dma
+          tags: ghcr.io/pulp-platform/snitch_cluster:sw-kmeans
           build-args: |-
             SNITCH_LLVM_VERSION=latest
