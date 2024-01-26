@@ -816,6 +816,7 @@ module snitch_cc #(
   int f;
   string fn;
   logic [63:0] cycle = 0;
+  int log_enabled = 0;
   initial begin
     // We need to schedule the assignment into a safe region, otherwise
     // `hart_id_i` won't have a value assigned at the beginning of the first
@@ -894,10 +895,20 @@ module snitch_cc #(
       if (
           !i_snitch.stall || i_snitch.retire_load || i_snitch.retire_acc
       ) begin
-        $sformat(trace_entry, "%t %1d %8d 0x%h DASM(%h) #; %s\n",
-            $time, cycle, i_snitch.priv_lvl_q, i_snitch.pc_q, i_snitch.inst_data_i,
-            snitch_pkg::print_snitch_trace(extras_snitch));
-        $fwrite(f, trace_entry);
+        if (!log_enabled) begin
+          if (i_snitch.csr_en && i_snitch.inst_data_i[31:20] == riscv_instr::CSR_MCYCLE) begin // Start logging after first mcycle
+            log_enabled = 1;
+          end
+        end
+        if (log_enabled) begin
+          $sformat(trace_entry, "%t %1d %8d 0x%h DASM(%h) #; %s\n",
+              $time, cycle, i_snitch.priv_lvl_q, i_snitch.pc_q, i_snitch.inst_data_i,
+              snitch_pkg::print_snitch_trace(extras_snitch));
+          $fwrite(f, trace_entry);
+          if (i_snitch.wfi_d) begin // Disable log at the end
+            log_enabled = 0;
+          end
+        end
       end
       if (FPEn) begin
         // Trace FPU iff:
@@ -907,18 +918,22 @@ module snitch_cc #(
         // OR an FPU result, LSU result or bus value is ready to be written back to an FPR register
         if (extras_fpu.acc_q_hs || extras_fpu.fpu_out_hs
         || extras_fpu.lsu_q_hs || extras_fpu.fpr_we) begin
-          $sformat(trace_entry, "%t %1d %8d 0x%h DASM(%h) #; %s\n",
-              $time, cycle, i_snitch.priv_lvl_q, 32'hz, extras_fpu.op_in,
-              snitch_pkg::print_fpu_trace(extras_fpu));
-          $fwrite(f, trace_entry);
+          if (log_enabled) begin
+            $sformat(trace_entry, "%t %1d %8d 0x%h DASM(%h) #; %s\n",
+                $time, cycle, i_snitch.priv_lvl_q, 32'hz, extras_fpu.op_in,
+                snitch_pkg::print_fpu_trace(extras_fpu));
+            $fwrite(f, trace_entry);
+          end
         end
         // sequencer instructions
         if (Xfrep) begin
           if (extras_fpu_seq_out.cbuf_push) begin
-            $sformat(trace_entry, "%t %1d %8d 0x%h DASM(%h) #; %s\n",
-                $time, cycle, i_snitch.priv_lvl_q, 32'hz, 64'hz,
-                snitch_pkg::print_fpu_sequencer_trace(extras_fpu_seq_out));
-            $fwrite(f, trace_entry);
+            if (log_enabled) begin
+              $sformat(trace_entry, "%t %1d %8d 0x%h DASM(%h) #; %s\n",
+                  $time, cycle, i_snitch.priv_lvl_q, 32'hz, 64'hz,
+                  snitch_pkg::print_fpu_sequencer_trace(extras_fpu_seq_out));
+              $fwrite(f, trace_entry);
+            end
           end
         end
       end
