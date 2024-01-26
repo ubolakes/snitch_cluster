@@ -331,14 +331,14 @@ module axi_dma_backend #(
           //--------------------------------------
           dma_meta = '{
           // time
-          "time"           : $time(),
-                    "DataWidth"      : DataWidth,
-                    "AddrWidth"      : AddrWidth,
-                    "IdWidth"        : IdWidth,
-                    "AxReqFifoDepth" : AxReqFifoDepth,
-                    "TransFifoDepth" : TransFifoDepth,
-                    "BufferDepth"    : BufferDepth
-                };
+            "time"           : $time()
+            // "DataWidth"      : DataWidth,
+            // "AddrWidth"      : AddrWidth,
+            // "IdWidth"        : IdWidth,
+            // "AxReqFifoDepth" : AxReqFifoDepth,
+            // "TransFifoDepth" : TransFifoDepth,
+            // "BufferDepth"    : BufferDepth
+          };
 
           //--------------------------------------
           // Backend
@@ -565,12 +565,12 @@ module axi_dma_backend #(
               dma_string = $sformatf("%s'%s': 0x%0x, ", dma_string, key, dma_meta[key]);
             foreach (dma_backend[key])
               dma_string = $sformatf("%s'%s': 0x%0x, ", dma_string, key, dma_backend[key]);
-            foreach (dma_burst_res[key])
-              dma_string = $sformatf("%s'%s': 0x%0x, ", dma_string, key, dma_burst_res[key]);
-            foreach (dma_data_mover[key])
-              dma_string = $sformatf("%s'%s': 0x%0x, ", dma_string, key, dma_data_mover[key]);
-            foreach (dma_data_path[key])
-              dma_string = $sformatf("%s'%s': 0x%0x, ", dma_string, key, dma_data_path[key]);
+            // foreach (dma_burst_res[key])
+            //   dma_string = $sformatf("%s'%s': 0x%0x, ", dma_string, key, dma_burst_res[key]);
+            // foreach (dma_data_mover[key])
+            //   dma_string = $sformatf("%s'%s': 0x%0x, ", dma_string, key, dma_data_mover[key]);
+            // foreach (dma_data_path[key])
+            //   dma_string = $sformatf("%s'%s': 0x%0x, ", dma_string, key, dma_data_path[key]);
 
             //--------------------------------------
             // Realign Buffer Data Store
