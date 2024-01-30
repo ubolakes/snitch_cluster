@@ -20,9 +20,9 @@ typedef struct {
  * \brief Maps the layout of the TCDM. May be double buffered.
  */
 typedef struct {
-    FLOAT_T A[L1_M * L1_K];
-    FLOAT_T B[L1_K * L1_N];
-    FLOAT_T C[L1_M * L1_N];
+    FLOAT_T A[L1_M * L1_K] __attribute__ ((aligned (32*8)));
+    FLOAT_T B[L1_K * L1_N] __attribute__ ((aligned (32*8)));
+    FLOAT_T C[L1_M * L1_N] __attribute__ ((aligned (32*8)));
 } SNBLAS_GEMM_TCDM(FLOAT_T);
 
 // NAMED_DUMP(SNBLAS_GEMM_TCDM(FLOAT_T)*, CONCAT(l1_, FLOAT_T), 0x8)
