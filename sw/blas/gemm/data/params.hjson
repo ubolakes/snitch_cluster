@@ -15,4 +15,5 @@
     expand: 0,
     linspace: true,
     bench_iters: 2,
+    method: "2dpipe",
 }
