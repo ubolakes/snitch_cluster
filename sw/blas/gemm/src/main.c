@@ -49,7 +49,7 @@ int main() {
 
     for (volatile int i = iters; i > 0; --i) {
         // if (i == 1) snrt_mcycle(); // start
-        SNBLAS_GEMM(DTYPE)(gemmInfo, gemmArgs, i == 1);
+        SNBLAS_GEMM(2dpipe, DTYPE)(gemmInfo, gemmArgs, i == 1);
         // dma_xfer_test(c, M*N, i == 1);
 
         if (i == 1) snrt_mcycle(); // end

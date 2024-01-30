@@ -2,22 +2,16 @@
 #error "Define FLOAT_T to use this template."
 #endif
 
-#ifndef USE_C2C_TILES
-#error "Define USE_C2C_TILES to use this template."
-#endif
-
 #ifndef IS_DM_CORE
 #error "Define IS_DM_CORE to use this template."
 #endif
 
 #include "gemm_kernel.h"
 
-#ifndef SNBLAS_GEMM_TILING
-#define SNBLAS_GEMM_TILING(is_dm_core, float_t) CONCAT3(snblas_gemm_, is_dm_core, float_t)
-#endif
+void SNBLAS_GEMM_TILING(2dpipe, IS_DM_CORE, FLOAT_T) (const SnblasGemmInfo info, const SNBLAS_GEMM_ARGS(FLOAT_T) args, const bool bench) {
 
-void SNBLAS_GEMM_TILING(IS_DM_CORE, FLOAT_T) (const SnblasGemmInfo info, const SNBLAS_GEMM_ARGS(FLOAT_T) args, const bool bench) {
-    
+#define USE_C2C_TILES true
+
     /**
      * Problem is double buffered in L1. The buffer that is used is toggled at
      * each iteration. The DMA cores are one index step ahead so they load the
@@ -108,7 +102,7 @@ void SNBLAS_GEMM_TILING(IS_DM_CORE, FLOAT_T) (const SnblasGemmInfo info, const S
 
     if (!IS_DM_CORE) {
         SNBLAS_GEMM_CLUSTER_KERNEL_INIT(FLOAT_T)(tileInfo);
-        snrt_global_barrier();  // DMA core is one index ahead
+        // DMA core is one index ahead
     }
 
     // Wait for pipeline to be filled
@@ -203,7 +197,11 @@ void SNBLAS_GEMM_TILING(IS_DM_CORE, FLOAT_T) (const SnblasGemmInfo info, const S
     }
 
     if (IS_DM_CORE) {
-        snrt_global_barrier();  // DMA core is one index ahead
+        // DMA core is one index ahead
+        if (USE_C2C_TILES)
+            snrt_global_barrier();
+        else
+            snrt_cluster_hw_barrier();
 
         // store final tile
         // if (ib_prev >= 0 && jb_prev >= 0) {
