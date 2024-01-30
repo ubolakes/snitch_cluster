@@ -12,6 +12,7 @@
 #include "snrt.h"
 
 #include "gemm.h"
+#include "dma_xfer_test.h"
 
 #include "dump.h"
 NAMED_DUMP(uint32_t, err, 0x7)
@@ -49,8 +50,8 @@ int main() {
     for (volatile int i = iters; i > 0; --i) {
         // if (i == 1) snrt_mcycle(); // start
         SNBLAS_GEMM(DTYPE)(gemmInfo, gemmArgs, i == 1);
-        // gemm_oc(data_dtype_size, data_expand, setup_ssr, data_TA, data_TB, data_M, data_N, data_K, 1,
-        //         data_a, lda, data_b, ldb, data_BETA, data_c, ldc);
+        // dma_xfer_test(c, M*N, i == 1);
+
         if (i == 1) snrt_mcycle(); // end
         snrt_fpu_fence();
         snrt_global_barrier();
