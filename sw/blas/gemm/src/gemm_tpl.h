@@ -27,11 +27,11 @@
 #define SNBLAS_GEMM(method, float_t) CONCAT3(snblas_gemm_, method, float_t)
 #endif
 
-extern void SNBLAS_GEMM(METHOD, FLOAT_T) (const SnblasGemmInfo info, const SNBLAS_GEMM_ARGS(FLOAT_T) args, bool bench);
-inline void SNBLAS_GEMM(METHOD, FLOAT_T) (const SnblasGemmInfo info, const SNBLAS_GEMM_ARGS(FLOAT_T) args, bool bench) {
+extern void SNBLAS_GEMM(METHOD, FLOAT_T) (const SnblasGemmInfo info, const SNBLAS_GEMM_ARGS(FLOAT_T) args, const SnblasGemmImpl impl);
+inline void SNBLAS_GEMM(METHOD, FLOAT_T) (const SnblasGemmInfo info, const SNBLAS_GEMM_ARGS(FLOAT_T) args, const SnblasGemmImpl impl) {
     if (snrt_is_dm_core()) {
-        SNBLAS_GEMM_TILING(METHOD, FLOAT_T, true)(info, args, bench);
+        SNBLAS_GEMM_TILING(METHOD, FLOAT_T, true)(info, args, impl);
     } else {
-        SNBLAS_GEMM_TILING(METHOD, FLOAT_T, false)(info, args, bench);
+        SNBLAS_GEMM_TILING(METHOD, FLOAT_T, false)(info, args, impl);
     }
 }

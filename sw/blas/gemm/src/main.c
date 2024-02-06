@@ -48,9 +48,16 @@ int main() {
     gemmArgs.alpha = 1;
     gemmArgs.beta  = BETA;
 
+    SnblasGemmImpl gemmImpl = {0};
+    gemmImpl.ta_tile = TA_TILE;
+    gemmImpl.tb_tile = TB_TILE;
+    gemmImpl.tc_tile = TC_TILE;
+
     for (volatile int i = iters; i > 0; --i) {
+        dump_bench_iter(-i);
         // if (i == 1) snrt_mcycle(); // start
-        SNBLAS_GEMM(METHOD, DTYPE)(gemmInfo, gemmArgs, i == 1);
+        gemmImpl.bench = i == 1;
+        SNBLAS_GEMM(METHOD, DTYPE)(gemmInfo, gemmArgs, gemmImpl);
         // dma_xfer_test(c, M*N, i == 1);
 
         if (i == 1) snrt_mcycle(); // end

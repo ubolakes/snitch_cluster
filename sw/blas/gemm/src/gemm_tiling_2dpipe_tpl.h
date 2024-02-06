@@ -8,7 +8,7 @@
 
 #include "gemm_kernel.h"
 
-void SNBLAS_GEMM_TILING(2dpipe, FLOAT_T, IS_DM_CORE) (const SnblasGemmInfo info, const SNBLAS_GEMM_ARGS(FLOAT_T) args, const bool bench) {
+void SNBLAS_GEMM_TILING(2dpipe, FLOAT_T, IS_DM_CORE) (const SnblasGemmInfo info, const SNBLAS_GEMM_ARGS(FLOAT_T) args, const SnblasGemmImpl impl) {
 
 #define USE_C2C_TILES true
 
@@ -22,7 +22,7 @@ void SNBLAS_GEMM_TILING(2dpipe, FLOAT_T, IS_DM_CORE) (const SnblasGemmInfo info,
     typedef SnblasGemmInfo GemmInfo;
     typedef SNBLAS_GEMM_ARGS(FLOAT_T) GemmArgs;
 
-    if (bench) snrt_mcycle();
+    if (impl.bench) snrt_mcycle();
 
     const uint32_t M   = info.M;
     const uint32_t N   = info.N;
@@ -100,10 +100,10 @@ void SNBLAS_GEMM_TILING(2dpipe, FLOAT_T, IS_DM_CORE) (const SnblasGemmInfo info,
     tileInfo.ta  = false;
     tileInfo.tb  = false;
 
-    if (bench) snrt_mcycle();
+    if (impl.bench) snrt_mcycle();
 
     if (!IS_DM_CORE) {
-        SNBLAS_GEMM_CLUSTER_KERNEL_INIT(FLOAT_T)(tileInfo);
+        SNBLAS_GEMM_CLUSTER_KERNEL_INIT(FLOAT_T)(tileInfo, impl);
         // DMA core is one index ahead
         
         asm volatile ("" ::: "memory");
@@ -111,7 +111,7 @@ void SNBLAS_GEMM_TILING(2dpipe, FLOAT_T, IS_DM_CORE) (const SnblasGemmInfo info,
             snrt_global_barrier();
         else
             snrt_cluster_hw_barrier();
-        if (bench) snrt_mcycle();
+        if (impl.bench) snrt_mcycle();
     }
 
     // Wait for pipeline to be filled
@@ -120,7 +120,7 @@ void SNBLAS_GEMM_TILING(2dpipe, FLOAT_T, IS_DM_CORE) (const SnblasGemmInfo info,
             snrt_global_barrier();
         else
             snrt_cluster_hw_barrier();
-        if (bench) snrt_mcycle();
+        if (impl.bench) snrt_mcycle();
     }
 
     FOR_EACH(ib, pi, M / L1_M, PI, ib_dir, ib_prev) {
@@ -169,7 +169,7 @@ void SNBLAS_GEMM_TILING(2dpipe, FLOAT_T, IS_DM_CORE) (const SnblasGemmInfo info,
                     }
 
                     snrt_dma_wait_all();
-                    if (bench) snrt_mcycle();
+                    if (impl.bench) snrt_mcycle();
                 } else {
                     // solve block already in l1, parallelize inside each
                     // cluster
@@ -186,14 +186,14 @@ void SNBLAS_GEMM_TILING(2dpipe, FLOAT_T, IS_DM_CORE) (const SnblasGemmInfo info,
                     tileArgs.alpha = alpha;
                     tileArgs.beta  = beta;
                     
-                    SNBLAS_GEMM_CLUSTER_KERNEL_COMPUTE(FLOAT_T)(tileInfo, tileArgs, bench);
+                    SNBLAS_GEMM_CLUSTER_KERNEL_COMPUTE(FLOAT_T)(tileInfo, tileArgs, impl);
                 }
                 
                 if (USE_C2C_TILES)
                     snrt_global_barrier();
                 else
                     snrt_cluster_hw_barrier();
-                if (bench) snrt_mcycle();
+                if (impl.bench) snrt_mcycle();
 
                 if (IS_DM_CORE) {
                     if (storeC) {
@@ -225,7 +225,7 @@ void SNBLAS_GEMM_TILING(2dpipe, FLOAT_T, IS_DM_CORE) (const SnblasGemmInfo info,
             snrt_dma_wait_all();
         // }
     } else {
-        SNBLAS_GEMM_CLUSTER_KERNEL_DEINIT(FLOAT_T)(tileInfo);
+        SNBLAS_GEMM_CLUSTER_KERNEL_DEINIT(FLOAT_T)(tileInfo, impl);
     }
 
     // Wait for pipeline to be emptied
@@ -233,5 +233,5 @@ void SNBLAS_GEMM_TILING(2dpipe, FLOAT_T, IS_DM_CORE) (const SnblasGemmInfo info,
         snrt_global_barrier();
     }
 
-    if (bench) snrt_mcycle();
+    if (impl.bench) snrt_mcycle();
 }

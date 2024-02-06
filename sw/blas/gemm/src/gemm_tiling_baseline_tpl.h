@@ -8,7 +8,7 @@
 
 #include "gemm_kernel.h"
 
-void SNBLAS_GEMM_TILING(baseline, FLOAT_T, IS_DM_CORE) (const SnblasGemmInfo info, const SNBLAS_GEMM_ARGS(FLOAT_T) args, const bool bench) {
+void SNBLAS_GEMM_TILING(baseline, FLOAT_T, IS_DM_CORE) (const SnblasGemmInfo info, const SNBLAS_GEMM_ARGS(FLOAT_T) args, const SnblasGemmImpl impl) {
     
     /**
      * Problem is double buffered in L1. The buffer that is used is toggled at
@@ -20,7 +20,7 @@ void SNBLAS_GEMM_TILING(baseline, FLOAT_T, IS_DM_CORE) (const SnblasGemmInfo inf
     typedef SnblasGemmInfo GemmInfo;
     typedef SNBLAS_GEMM_ARGS(FLOAT_T) GemmArgs;
 
-    if (bench) snrt_mcycle();
+    if (impl.bench) snrt_mcycle();
 
     const uint32_t M   = info.M;
     const uint32_t N   = info.N;
@@ -72,10 +72,10 @@ void SNBLAS_GEMM_TILING(baseline, FLOAT_T, IS_DM_CORE) (const SnblasGemmInfo inf
     tileInfo.tb  = false;
 
     // TODO: place memory barrier before sync
-    if (bench) snrt_mcycle();
+    if (impl.bench) snrt_mcycle();
 
     if (!IS_DM_CORE) {
-        SNBLAS_GEMM_CLUSTER_KERNEL_INIT(FLOAT_T)(tileInfo);
+        SNBLAS_GEMM_CLUSTER_KERNEL_INIT(FLOAT_T)(tileInfo, impl);
         snrt_cluster_hw_barrier();  // DMA core is one index ahead
     }
 
@@ -113,12 +113,12 @@ void SNBLAS_GEMM_TILING(baseline, FLOAT_T, IS_DM_CORE) (const SnblasGemmInfo inf
                     tileArgs.alpha = alpha;
                     tileArgs.beta  = beta;
                     
-                    SNBLAS_GEMM_CLUSTER_KERNEL_COMPUTE(FLOAT_T)(tileInfo, tileArgs, bench);
+                    SNBLAS_GEMM_CLUSTER_KERNEL_COMPUTE(FLOAT_T)(tileInfo, tileArgs, impl);
                 }
                 
-                // if (bench) snrt_mcycle();
+                // if (impl.bench) snrt_mcycle();
                 snrt_cluster_hw_barrier();
-                if (bench) snrt_mcycle();
+                if (impl.bench) snrt_mcycle();
 
                 if (IS_DM_CORE) {
                     if (storeC) {
@@ -146,8 +146,8 @@ void SNBLAS_GEMM_TILING(baseline, FLOAT_T, IS_DM_CORE) (const SnblasGemmInfo inf
             snrt_dma_wait_all();
         // }
     } else {
-        SNBLAS_GEMM_CLUSTER_KERNEL_DEINIT(FLOAT_T)(tileInfo);
+        SNBLAS_GEMM_CLUSTER_KERNEL_DEINIT(FLOAT_T)(tileInfo, impl);
     }
 
-    if (bench) snrt_mcycle();
+    if (impl.bench) snrt_mcycle();
 }

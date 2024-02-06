@@ -49,6 +49,17 @@ typedef struct {
     uint32_t tb;
 } SnblasGemmInfo;
 
+/**
+ * Constants related to which implementation should be used. 
+ * Only for non-template parameters
+*/
+typedef struct {
+    bool bench;   // Enable benchmarking code
+    bool ta_tile; // Transpose the A tile when loading into TCDM
+    bool tb_tile;
+    bool tc_tile;
+} SnblasGemmImpl;
+
 #define L1_M 8
 #define L1_N 8
 #define L1_K 8

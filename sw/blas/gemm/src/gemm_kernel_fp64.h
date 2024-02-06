@@ -1,8 +1,8 @@
 #include "gemm_decls.h"
 
 #define _FMADD_UNROLL 8
-extern void snblas_gemm_cluster_kernel_init_fp64(const SnblasGemmInfo info);
-inline void snblas_gemm_cluster_kernel_init_fp64(const SnblasGemmInfo info) {
+extern void snblas_gemm_cluster_kernel_init_fp64(const SnblasGemmInfo info, const SnblasGemmImpl impl);
+inline void snblas_gemm_cluster_kernel_init_fp64(const SnblasGemmInfo info, const SnblasGemmImpl impl) {
     uint32_t p[3], P[3];
     ocrt_thread_idx(p);
     ocrt_compute_thread_num(P);
@@ -60,13 +60,13 @@ inline void snblas_gemm_cluster_kernel_init_fp64(const SnblasGemmInfo info) {
     snrt_ssr_enable();
 }
 
-extern void snblas_gemm_cluster_kernel_deinit_fp64(const SnblasGemmInfo info);
-inline void snblas_gemm_cluster_kernel_deinit_fp64(const SnblasGemmInfo info) {
+extern void snblas_gemm_cluster_kernel_deinit_fp64(const SnblasGemmInfo info, const SnblasGemmImpl impl);
+inline void snblas_gemm_cluster_kernel_deinit_fp64(const SnblasGemmInfo info, const SnblasGemmImpl impl) {
     snrt_ssr_disable();
 }
 
-extern void snblas_gemm_cluster_kernel_compute_fp64(const SnblasGemmInfo info, const SnblasGemmArgs_fp64 args, bool bench);
-inline void snblas_gemm_cluster_kernel_compute_fp64(const SnblasGemmInfo info, const SnblasGemmArgs_fp64 args, bool bench) {
+extern void snblas_gemm_cluster_kernel_compute_fp64(const SnblasGemmInfo info, const SnblasGemmArgs_fp64 args, const SnblasGemmImpl impl);
+inline void snblas_gemm_cluster_kernel_compute_fp64(const SnblasGemmInfo info, const SnblasGemmArgs_fp64 args, const SnblasGemmImpl impl) {
     uint32_t p[3], P[3];
     ocrt_thread_idx(p);
     ocrt_compute_thread_num(P);
@@ -94,7 +94,7 @@ inline void snblas_gemm_cluster_kernel_compute_fp64(const SnblasGemmInfo info, c
     snrt_ssr_read(SNRT_SSR_DM0, SNRT_SSR_4D, (void*) A);
     snrt_ssr_read(SNRT_SSR_DM1, SNRT_SSR_4D, (void*) B);
 
-    if (bench) snrt_mcycle();
+    if (impl.bench) snrt_mcycle();
     for (uint32_t m = 0; m < M; m++) {
         uint32_t n = 0;
         for (; n < N; n += unroll) {
@@ -156,16 +156,16 @@ inline void snblas_gemm_cluster_kernel_compute_fp64(const SnblasGemmInfo info, c
     }
 
     snrt_fpu_fence();
-    if (bench) snrt_mcycle();
+    if (impl.bench) snrt_mcycle();
 }
 
 /**
  * \brief Perform a one-time gemm computation for data in TCDM. 
  * Use the `init`, `compute` and `deinit` directly to get maximum performance when running multiple times.
 */
-extern void snblas_gemm_cluster_kernel_fp64(const SnblasGemmInfo info, const SnblasGemmArgs_fp64 args);
-inline void snblas_gemm_cluster_kernel_fp64(const SnblasGemmInfo info, const SnblasGemmArgs_fp64 args) {
-    snblas_gemm_cluster_kernel_init_fp64(info);
-    snblas_gemm_cluster_kernel_compute_fp64(info, args, false);
-    snblas_gemm_cluster_kernel_deinit_fp64(info);
+extern void snblas_gemm_cluster_kernel_fp64(const SnblasGemmInfo info, const SnblasGemmArgs_fp64 args, const SnblasGemmImpl impl);
+inline void snblas_gemm_cluster_kernel_fp64(const SnblasGemmInfo info, const SnblasGemmArgs_fp64 args, const SnblasGemmImpl impl) {
+    snblas_gemm_cluster_kernel_init_fp64(info, impl);
+    snblas_gemm_cluster_kernel_compute_fp64(info, args, impl);
+    snblas_gemm_cluster_kernel_deinit_fp64(info, impl);
 }

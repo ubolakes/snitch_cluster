@@ -5,15 +5,33 @@
 // Parameters for a GEMM
 
 {
-    M: 192,
-    N: 16,
-    K: 16,
-    beta: 0,
-    ta: false,
-    tb: true, // must be true for SIMD
-    prec: 64,
-    expand: 0,
-    linspace: true,
-    bench_iters: 2,
-    method: "2dpipe",
+    gemmInfo: {
+        prec: 64,
+        M: 192,
+        N: 16,
+        K: 16,
+        ta: false,
+        tb: true, // must be true for SIMD
+    }
+
+    gemmArgs: { // C = alpha * A * B + beta * C
+        beta: 0,
+        alpha: 1,
+    }
+
+    gemmImpl: {
+        method: "baseline",
+        ta_tile: false,
+        tb_tile: false,
+        tc_tile: false,
+        expand: 0,
+    }
+    
+    bench: {
+        iters: 2,
+    }
+    
+    datagen: {
+        linspace: true,
+    }
 }
