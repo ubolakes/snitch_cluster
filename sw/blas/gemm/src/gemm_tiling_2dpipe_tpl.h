@@ -105,12 +105,21 @@ void SNBLAS_GEMM_TILING(2dpipe, FLOAT_T, IS_DM_CORE) (const SnblasGemmInfo info,
     if (!IS_DM_CORE) {
         SNBLAS_GEMM_CLUSTER_KERNEL_INIT(FLOAT_T)(tileInfo);
         // DMA core is one index ahead
+        
+        asm volatile ("" ::: "memory");
+        if (USE_C2C_TILES)
+            snrt_global_barrier();
+        else
+            snrt_cluster_hw_barrier();
         if (bench) snrt_mcycle();
     }
 
     // Wait for pipeline to be filled
     for (int pipeline = pk; pipeline > 0; --pipeline) {
-        snrt_global_barrier();
+        if (USE_C2C_TILES)
+            snrt_global_barrier();
+        else
+            snrt_cluster_hw_barrier();
         if (bench) snrt_mcycle();
     }
 
