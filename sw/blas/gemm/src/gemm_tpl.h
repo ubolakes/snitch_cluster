@@ -10,7 +10,7 @@
 
 // Instantiate template code
 #ifndef SNBLAS_GEMM_TILING
-#define SNBLAS_GEMM_TILING(method, is_dm_core, float_t) CONCAT4(snblas_gemm_, method, is_dm_core, float_t)
+#define SNBLAS_GEMM_TILING(method, float_t, is_dm_core) CONCAT4(snblas_gemm_, method, float_t, is_dm_core)
 #endif
 
 #define GEMM_TILING_TPL_H STR(CONCAT3(gemm_tiling_, METHOD, _tpl.h))
@@ -30,8 +30,8 @@
 extern void SNBLAS_GEMM(METHOD, FLOAT_T) (const SnblasGemmInfo info, const SNBLAS_GEMM_ARGS(FLOAT_T) args, bool bench);
 inline void SNBLAS_GEMM(METHOD, FLOAT_T) (const SnblasGemmInfo info, const SNBLAS_GEMM_ARGS(FLOAT_T) args, bool bench) {
     if (snrt_is_dm_core()) {
-        SNBLAS_GEMM_TILING(METHOD, true, FLOAT_T)(info, args, bench);
+        SNBLAS_GEMM_TILING(METHOD, FLOAT_T, true)(info, args, bench);
     } else {
-        SNBLAS_GEMM_TILING(METHOD, false, FLOAT_T)(info, args, bench);
+        SNBLAS_GEMM_TILING(METHOD, FLOAT_T, false)(info, args, bench);
     }
 }

@@ -9,17 +9,36 @@
 #include "gemm_tpl.h"
 #undef FLOAT_T
 
-// #define FLOAT_T fp32
-// #include "gemm_2dpipe_tpl.h"
-// #undef FLOAT_T
+#define FLOAT_T fp32
+#include "gemm_tpl.h"
+#undef FLOAT_T
 
-// #define FLOAT_T fp16
-// #include "gemm_2dpipe_tpl.h"
-// #undef FLOAT_T
+#define FLOAT_T fp16
+#include "gemm_tpl.h"
+#undef FLOAT_T
 
-// #define FLOAT_T fp8
-// #include "gemm_2dpipe_tpl.h"
-// #undef FLOAT_T
+#define FLOAT_T fp8
+#include "gemm_tpl.h"
+#undef FLOAT_T
+#undef METHOD
+
+// -- Baseline
+#define METHOD 1dpipe
+#define FLOAT_T fp64
+#include "gemm_tpl.h"
+#undef FLOAT_T
+
+#define FLOAT_T fp32
+#include "gemm_tpl.h"
+#undef FLOAT_T
+
+#define FLOAT_T fp16
+#include "gemm_tpl.h"
+#undef FLOAT_T
+
+#define FLOAT_T fp8
+#include "gemm_tpl.h"
+#undef FLOAT_T
 #undef METHOD
 
 // -- Baseline
@@ -28,17 +47,17 @@
 #include "gemm_tpl.h"
 #undef FLOAT_T
 
-// #define FLOAT_T fp32
-// #include "gemm_baseline_tpl.h"
-// #undef FLOAT_T
+#define FLOAT_T fp32
+#include "gemm_tpl.h"
+#undef FLOAT_T
 
-// #define FLOAT_T fp16
-// #include "gemm_baseline_tpl.h"
-// #undef FLOAT_T
+#define FLOAT_T fp16
+#include "gemm_tpl.h"
+#undef FLOAT_T
 
-// #define FLOAT_T fp8
-// #include "gemm_baseline_tpl.h"
-// #undef FLOAT_T
+#define FLOAT_T fp8
+#include "gemm_tpl.h"
+#undef FLOAT_T
 #undef METHOD
 
 #endif
