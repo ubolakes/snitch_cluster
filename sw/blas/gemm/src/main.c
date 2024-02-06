@@ -16,6 +16,7 @@
 
 #include "dump.h"
 NAMED_DUMP(uint32_t, err, 0x7)
+NAMED_DUMP(uint32_t, bench_iter, 0x7)
 
 #define BIST
 #include "data.h"

@@ -55,15 +55,15 @@ inline void SNBLAS_GEMM_CLUSTER_KERNEL_DEINIT(FLOAT_T)(const SnblasGemmInfo info
     snrt_ssr_disable();
 }
 
-void SNBLAS_GEMM_CLUSTER_KERNEL_COMPUTE(FLOAT_T)(const SnblasGemmInfo info, const SNBLAS_GEMM_ARGS(FLOAT_T) args);
+void SNBLAS_GEMM_CLUSTER_KERNEL_COMPUTE(FLOAT_T)(const SnblasGemmInfo info, const SNBLAS_GEMM_ARGS(FLOAT_T) args, bool bench);
 
 /**
  * \brief Perform a one-time gemm computation for data in TCDM. 
  * Use the `init`, `compute` and `deinit` directly to get maximum performance when running multiple times.
 */
-extern void SNBLAS_GEMM_CLUSTER_KERNEL(FLOAT_T)(const SnblasGemmInfo info, const SNBLAS_GEMM_ARGS(FLOAT_T) args);
-inline void SNBLAS_GEMM_CLUSTER_KERNEL(FLOAT_T)(const SnblasGemmInfo info, const SNBLAS_GEMM_ARGS(FLOAT_T) args) {
+extern void SNBLAS_GEMM_CLUSTER_KERNEL(FLOAT_T)(const SnblasGemmInfo info, const SNBLAS_GEMM_ARGS(FLOAT_T) args, bool bench);
+inline void SNBLAS_GEMM_CLUSTER_KERNEL(FLOAT_T)(const SnblasGemmInfo info, const SNBLAS_GEMM_ARGS(FLOAT_T) args, bool bench) {
     SNBLAS_GEMM_CLUSTER_KERNEL_INIT(FLOAT_T)(info);
-    SNBLAS_GEMM_CLUSTER_KERNEL_COMPUTE(FLOAT_T)(info, args);
+    SNBLAS_GEMM_CLUSTER_KERNEL_COMPUTE(FLOAT_T)(info, args, bench);
     SNBLAS_GEMM_CLUSTER_KERNEL_DEINIT(FLOAT_T)(info);
 }

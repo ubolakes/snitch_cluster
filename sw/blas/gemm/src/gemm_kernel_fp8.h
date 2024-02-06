@@ -2,8 +2,8 @@
 #define FLOAT_T fp8
 #include "gemm_kernel_init_tpl.h"
 
-extern void SNBLAS_GEMM_CLUSTER_KERNEL_COMPUTE(FLOAT_T)(const SnblasGemmInfo info, const SNBLAS_GEMM_ARGS(FLOAT_T) args);
-inline void SNBLAS_GEMM_CLUSTER_KERNEL_COMPUTE(FLOAT_T)(const SnblasGemmInfo info, const SNBLAS_GEMM_ARGS(FLOAT_T) args) {
+extern void SNBLAS_GEMM_CLUSTER_KERNEL_COMPUTE(FLOAT_T)(const SnblasGemmInfo info, const SNBLAS_GEMM_ARGS(FLOAT_T) args, bool bench);
+inline void SNBLAS_GEMM_CLUSTER_KERNEL_COMPUTE(FLOAT_T)(const SnblasGemmInfo info, const SNBLAS_GEMM_ARGS(FLOAT_T) args, bool bench) {
     uint32_t p[3], P[3];
     ocrt_thread_idx(p);
     ocrt_compute_thread_num(P);
@@ -32,6 +32,7 @@ inline void SNBLAS_GEMM_CLUSTER_KERNEL_COMPUTE(FLOAT_T)(const SnblasGemmInfo inf
     // Kernel progresses by 8 values each step
     const uint32_t n_frep = K / 8 - 1;
 
+    if (bench) snrt_mcycle();
     for (uint32_t m = 0; m < M; m++) {
         uint32_t n = 0;
         for (uint32_t n0 = 0; n0 < N / unroll; n0++) {
@@ -183,6 +184,7 @@ inline void SNBLAS_GEMM_CLUSTER_KERNEL_COMPUTE(FLOAT_T)(const SnblasGemmInfo inf
     }
 
     snrt_fpu_fence();
+    if (bench) snrt_mcycle();
 }
 
 #undef FLOAT_T
