@@ -1,6 +1,5 @@
 #include "gemm_decls.h"
 
-#define _FMADD_UNROLL 8
 extern void snblas_gemm_cluster_kernel_init_fp64(const SnblasGemmInfo info, const SnblasGemmImpl impl);
 inline void snblas_gemm_cluster_kernel_init_fp64(const SnblasGemmInfo info, const SnblasGemmImpl impl) {
     uint32_t p[3], P[3];
@@ -19,7 +18,7 @@ inline void snblas_gemm_cluster_kernel_init_fp64(const SnblasGemmInfo info, cons
     // Unrolling factor of most inner loop.
     // Should be at least as high as the FMA delay
     // for maximum utilization
-    const uint32_t unroll = _FMADD_UNROLL;
+    const uint32_t unroll = FMADD_D_UNROLL;
 
     // SSR strides and bounds only have to be configured
     // once in the beginning
@@ -88,7 +87,7 @@ inline void snblas_gemm_cluster_kernel_compute_fp64(const SnblasGemmInfo info, c
     
     // Unroll by at least fmadd.d latency to fill pipeline
     // Additional unrolling reduces indexing overhead but needs available registers
-    const uint32_t unroll = _FMADD_UNROLL;
+    const uint32_t unroll = FMADD_D_UNROLL;
 
     // SSR start address need to be configured each time
     snrt_ssr_read(SNRT_SSR_DM0, SNRT_SSR_4D, (void*) A);

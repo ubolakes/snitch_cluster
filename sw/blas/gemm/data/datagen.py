@@ -49,76 +49,104 @@ def golden_model(alpha, a, b, beta, c):
 
 
 def emit_header(**kwargs):
+    gemmInfo = kwargs['gemmInfo']
+    gemmArgs = kwargs['gemmArgs']
+    gemmImpl = kwargs['gemmImpl']
 
     # Generate random input matrices
-    dtype = NUMPY_TYPES[str(kwargs['prec'])]
-    if (kwargs['prec']) == 8:
+    dtype = NUMPY_TYPES[str(gemmInfo['prec'])]
+    if (gemmInfo['prec']) == 8:
         # sign -1 or 1
-        sign_a = np.random.randint(0, 2, (kwargs['M'], kwargs['K'])).astype(dtype)
+        sign_a = np.random.randint(0, 2, (gemmInfo['M'], gemmInfo['K'])).astype(dtype)
         # esponent < 0b01111
-        exponent_a = np.random.randint(0, 16, (kwargs['M'], kwargs['K'])).astype(dtype)
+        exponent_a = np.random.randint(0, 16, (gemmInfo['M'], gemmInfo['K'])).astype(dtype)
         # mantissa can be arbitrary
-        mantissa_a = np.random.randint(0, 4, (kwargs['M'], kwargs['K'])).astype(dtype)
+        mantissa_a = np.random.randint(0, 4, (gemmInfo['M'], gemmInfo['K'])).astype(dtype)
         # sign -1 or 1
-        sign_b = np.random.randint(0, 2, (kwargs['K'], kwargs['N'])).astype(dtype)
+        sign_b = np.random.randint(0, 2, (gemmInfo['K'], gemmInfo['N'])).astype(dtype)
         # esponent < 0b01111
-        exponent_b = np.random.randint(0, 16, (kwargs['K'], kwargs['N'])).astype(dtype)
+        exponent_b = np.random.randint(0, 16, (gemmInfo['K'], gemmInfo['N'])).astype(dtype)
         # mantissa can be arbitrary
-        mantissa_b = np.random.randint(0, 4, (kwargs['K'], kwargs['N'])).astype(dtype)
+        mantissa_b = np.random.randint(0, 4, (gemmInfo['K'], gemmInfo['N'])).astype(dtype)
         # sign -1 or 1
-        sign_c = np.random.randint(0, 2, (kwargs['M'], kwargs['N'])).astype(dtype)
+        sign_c = np.random.randint(0, 2, (gemmInfo['M'], gemmInfo['N'])).astype(dtype)
         # esponent < 0b01111
-        exponent_c = np.random.randint(0, 16, (kwargs['M'], kwargs['N'])).astype(dtype)
+        exponent_c = np.random.randint(0, 16, (gemmInfo['M'], gemmInfo['N'])).astype(dtype)
         # mantissa can be arbitrary
-        mantissa_c = np.random.randint(0, 4, (kwargs['M'], kwargs['N'])).astype(dtype)
+        mantissa_c = np.random.randint(0, 4, (gemmInfo['M'], gemmInfo['N'])).astype(dtype)
         _a = ((-1.0)**sign_a.astype(np.double))*(2.0**(exponent_a.astype(np.double)-15.0)) \
             * (1.0 + mantissa_a.astype(np.double) / (2**2))
         _b = ((-1.0)**sign_b.astype(np.double))*(2.0**(exponent_b.astype(np.double)-15.0)) \
             * (1.0 + mantissa_b.astype(np.double) / (2**2))
         _c = ((-1.0)**sign_c.astype(np.double))*(2.0**(exponent_c.astype(np.double)-15.0)) \
             * (1.0 + mantissa_c.astype(np.double) / (2**2))
-        result = golden_model(1, _a, _b, kwargs['beta'], _c)
+        result = golden_model(1, _a, _b, gemmArgs['beta'], _c)
         a = sign_a << 7 | exponent_a << FP8_FORMATS['fp8']['mant'] | mantissa_a
         b = sign_b << 7 | exponent_b << FP8_FORMATS['fp8']['mant'] | mantissa_b
         c = sign_c << 7 | exponent_c << FP8_FORMATS['fp8']['mant'] | mantissa_c
     else:
-        if kwargs['linspace']:
-            a = np.linspace(0.1, kwargs['M'] * kwargs['K'] + 0.1 -1, num=kwargs['M'] * kwargs['K']).reshape((kwargs['M'], kwargs['K'])).astype(dtype)
-            b = np.linspace(0.2, kwargs['K'] * kwargs['N'] + 0.2 -1, num=kwargs['K'] * kwargs['N']).reshape((kwargs['K'], kwargs['N'])).astype(dtype)
-            c = np.linspace(0.3, kwargs['M'] * kwargs['N'] + 0.3 -1, num=kwargs['M'] * kwargs['N']).reshape((kwargs['M'], kwargs['N'])).astype(dtype)
+        if kwargs['datagen']['linspace']:
+            a = np.linspace(0.1, gemmInfo['M'] * gemmInfo['K'] + 0.1 -1, num=gemmInfo['M'] * gemmInfo['K']).reshape((gemmInfo['M'], gemmInfo['K'])).astype(dtype)
+            b = np.linspace(0.2, gemmInfo['K'] * gemmInfo['N'] + 0.2 -1, num=gemmInfo['K'] * gemmInfo['N']).reshape((gemmInfo['K'], gemmInfo['N'])).astype(dtype)
+            c = np.linspace(0.3, gemmInfo['M'] * gemmInfo['N'] + 0.3 -1, num=gemmInfo['M'] * gemmInfo['N']).reshape((gemmInfo['M'], gemmInfo['N'])).astype(dtype)
         else:
-            a = np.random.rand(kwargs['M'], kwargs['K']).astype(dtype)
-            b = np.random.rand(kwargs['K'], kwargs['N']).astype(dtype)
-            c = np.random.rand(kwargs['M'], kwargs['N']).astype(dtype)
-        result = golden_model(1, a, b, kwargs['beta'], c)
+            a = np.random.rand(gemmInfo['M'], gemmInfo['K']).astype(dtype)
+            b = np.random.rand(gemmInfo['K'], gemmInfo['N']).astype(dtype)
+            c = np.random.rand(gemmInfo['M'], gemmInfo['N']).astype(dtype)
+        result = golden_model(gemmArgs['alpha'], a, b, gemmArgs['beta'], c)
 
     # Store matrices in transposed form if requested
-    a = a.T if kwargs['ta'] else a
-    b = b.T if kwargs['tb'] else b
+    a = a.T if gemmInfo['ta'] else a
+    b = b.T if gemmInfo['tb'] else b
+    c = c.T if gemmInfo['tc'] else c
+    result = result.T if gemmInfo['tc'] else result
 
     data_str = [emit_license()]
     data_str = ["#pragma once"]
-    data_str += [format_scalar_definition('uint32_t', 'bench_iters', kwargs['bench_iters'])]
-    data_str += [format_scalar_definition('uint32_t', 'M', kwargs['M'])]
-    data_str += [format_scalar_definition('uint32_t', 'N', kwargs['N'])]
-    data_str += [format_scalar_definition('uint32_t', 'K', kwargs['K'])]
-    data_str += [format_scalar_definition('uint32_t', 'TA', int(kwargs['ta']))]
-    data_str += [format_scalar_definition('uint32_t', 'TB', int(kwargs['tb']))]
-    data_str += [format_scalar_definition('double', 'BETA', kwargs['beta'])]
-    # data_str += [format_scalar_definition('uint32_t', 'dtype_size', kwargs['prec']//8)]
-    data_str += [f"#define DTYPE fp{kwargs['prec']}"]
-    data_str += [f"#define METHOD {kwargs['method']}"]
-    data_str += [format_scalar_definition('uint32_t', 'expand', kwargs['expand'])]
-    data_str += [format_vector_definition(C_TYPES[str(kwargs['prec'])], 'a', a.flatten(),
+
+    data_str += ["// -- gemmInfo"]
+    data_str += [f"#define DTYPE fp{gemmInfo['prec']}"]
+    # data_str += [format_scalar_definition('uint32_t', 'dtype_size', gemmInfo['prec']//8)]
+    data_str += [format_scalar_definition('uint32_t', 'M', gemmInfo['M'])]
+    data_str += [format_scalar_definition('uint32_t', 'N', gemmInfo['N'])]
+    data_str += [format_scalar_definition('uint32_t', 'K', gemmInfo['K'])]
+    data_str += [format_scalar_definition('uint32_t', 'TA', int(gemmInfo['ta']))]
+    data_str += [format_scalar_definition('uint32_t', 'TB', int(gemmInfo['tb']))]
+    data_str += [format_scalar_definition('uint32_t', 'TC', int(gemmInfo['tc']))]
+    
+    # gemmArgs
+    data_str += ["// -- gemmArgs"]
+    data_str += [format_scalar_definition('double', 'ALPHA', gemmArgs['alpha'])]
+    data_str += [format_scalar_definition('double', 'BETA', gemmArgs['beta'])]
+
+    # gemmImpl
+    data_str += ["// -- gemmImpl"]
+    data_str += [f"#define USE_METHOD {gemmImpl['method']}"]
+    data_str += [f"#define L1_M {gemmImpl['L1_M']}"]
+    data_str += [f"#define L1_N {gemmImpl['L1_N']}"]
+    data_str += [f"#define L1_K {gemmImpl['L1_K']}"]
+    data_str += [format_scalar_definition('uint32_t', 'TA_TILE', int(gemmImpl['ta_tile']))]
+    data_str += [format_scalar_definition('uint32_t', 'TB_TILE', int(gemmImpl['tb_tile']))]
+    data_str += [format_scalar_definition('uint32_t', 'TC_TILE', int(gemmImpl['tc_tile']))]
+    data_str += [format_scalar_definition('uint32_t', 'expand', gemmImpl['expand'])]
+    data_str += [f"#define FMADD_D_UNROLL {gemmImpl['fmadd_d_unroll']}"]
+
+    # bench
+    data_str += ["// -- bench"]
+    data_str += [format_scalar_definition('uint32_t', 'bench_iters', kwargs['bench']['iters'])]
+
+    # datagen
+    data_str += ["// -- datagen"]
+    data_str += [format_vector_definition(C_TYPES[str(gemmInfo['prec'])], 'a', a.flatten(),
                  alignment=BURST_ALIGNMENT, section=kwargs['section'])]
-    data_str += [format_vector_definition(C_TYPES[str(kwargs['prec'])], 'b', b.flatten(),
+    data_str += [format_vector_definition(C_TYPES[str(gemmInfo['prec'])], 'b', b.flatten(),
                  alignment=BURST_ALIGNMENT, section=kwargs['section'])]
-    data_str += [format_vector_definition(C_TYPES[str(kwargs['prec'])], 'c', c.flatten(),
+    data_str += [format_vector_definition(C_TYPES[str(gemmInfo['prec'])], 'c', c.flatten(),
                  alignment=BURST_ALIGNMENT, section=kwargs['section'])]
-    if kwargs['prec'] == 8:
+    if gemmInfo['prec'] == 8:
         result_def = format_vector_definition(C_TYPES['64'], 'result', result.flatten())
     else:
-        result_def = format_vector_definition(C_TYPES[str(kwargs['prec'])],
+        result_def = format_vector_definition(C_TYPES[str(gemmInfo['prec'])],
                                               'result',
                                               result.flatten())
     data_str += [format_ifdef_wrapper('BIST', result_def)]

@@ -12,6 +12,7 @@
         K: 16,
         ta: false,
         tb: true, // must be true for SIMD
+        tc: false, // not implemented
     }
 
     gemmArgs: { // C = alpha * A * B + beta * C
@@ -21,10 +22,14 @@
 
     gemmImpl: {
         method: "baseline",
+        L1_M: 8,
+        L1_N: 8,
+        L1_K: 8,
         ta_tile: false,
         tb_tile: false,
-        tc_tile: false,
+        tc_tile: false, // not implemented
         expand: 0,
+        fmadd_d_unroll: 8,
     }
     
     bench: {

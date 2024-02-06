@@ -233,8 +233,8 @@ inline snrt_dma_txid_t snrt_dma_load_2d_tile(
     );
 }
 
-/// Transfer a tile and transpose it
-inline void snrt_dma_load_2d_tile_transpose(
+/// Load a tile and transpose it
+inline snrt_dma_txid_t snrt_dma_load_2d_tile_transpose(
     void *dst, void *src, size_t tile_x1_idx, size_t tile_x0_idx,
     size_t tile_x1_size, size_t tile_x0_size, size_t full_x0_size,
     uint32_t prec) {
@@ -243,18 +243,22 @@ inline void snrt_dma_load_2d_tile_transpose(
     src_offset += tile_x0_idx * tile_x0_size;
     src_offset += tile_x1_idx * tile_x1_size * full_x0_size;
     src_offset *= prec;
+
+    snrt_dma_txid_t prev_txid = -1;
     // Initiate transfer
     for (uint32_t i = 0; i < tile_x0_size; i++)
     {
-        snrt_dma_start_2d(dst + i * tile_x1_size * prec, // dst
-                          src + src_offset + i * prec, // src
-                          prec,  // size
-                          prec,  // dst_stride
-                          full_x0_size * prec, // src_stride
-                          tile_x1_size         // repeat
+        prev_txid = snrt_dma_start_2d(dst + i * tile_x1_size * prec, // dst
+                                      src + src_offset + i * prec, // src
+                                      prec,  // size
+                                      prec,  // dst_stride
+                                      full_x0_size * prec, // src_stride
+                                      tile_x1_size         // repeat
         );
         
     }
+
+    return prev_txid;
 }
 
 /// Store a 2D-tile of shape (tile_x1_size, tile_x0_size) to the 2D array
@@ -278,6 +282,34 @@ inline snrt_dma_txid_t snrt_dma_store_2d_tile(
                              tile_x0_size * prec,  // src_stride
                              tile_x1_size          // repeat
     );
+}
+
+/// Store a tile and transpose it
+inline snrt_dma_txid_t snrt_dma_store_2d_tile_transpose(
+    void *dst, void *src, size_t tile_x1_idx, size_t tile_x0_idx,
+    size_t tile_x1_size, size_t tile_x0_size, size_t full_x0_size,
+    uint32_t prec) {
+    size_t dst_offset = 0;
+    // Advance dst array in x0 and x1 dimensions, and convert to byte offset
+    dst_offset += tile_x0_idx * tile_x0_size;
+    dst_offset += tile_x1_idx * tile_x1_size * full_x0_size;
+    dst_offset *= prec;
+
+    snrt_dma_txid_t prev_txid = -1;
+    // Initiate transfer
+    for (uint32_t i = 0; i < tile_x0_size; i++)
+    {
+        prev_txid = snrt_dma_start_2d(dst + dst_offset + i * prec, // dst
+                                      src + i * tile_x1_size * prec, // src
+                                      prec,  // size
+                                      prec,  // dst_stride
+                                      tile_x0_size * prec, // src_stride
+                                      tile_x1_size         // repeat
+        );
+        
+    }
+
+    return prev_txid;
 }
 
 //================================================================================

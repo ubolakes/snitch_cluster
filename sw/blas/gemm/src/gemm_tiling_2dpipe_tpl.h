@@ -97,8 +97,15 @@ void SNBLAS_GEMM_TILING(2dpipe, FLOAT_T, IS_DM_CORE) (const SnblasGemmInfo info,
     tileInfo.lda = L1_LDA;
     tileInfo.ldb = L1_LDB;
     tileInfo.ldc = L1_LDC;
-    tileInfo.ta  = false;
-    tileInfo.tb  = false;
+    tileInfo.ta  = info.ta ^ impl.ta_tile;
+    tileInfo.tb  = info.tb ^ impl.tb_tile;
+    tileInfo.tc  = info.tc ^ impl.tc_tile; // TODO: implement transposed blocking
+
+    // create function ptr for dma loading
+    const snrt_dma_load_2d_tile_transpose_t load_tile_A = impl.ta_tile ? &snrt_dma_load_2d_tile_transpose : &snrt_dma_load_2d_tile;
+    const snrt_dma_load_2d_tile_transpose_t load_tile_B = impl.tb_tile ? &snrt_dma_load_2d_tile_transpose : &snrt_dma_load_2d_tile;
+    const snrt_dma_load_2d_tile_transpose_t load_tile_C = impl.tc_tile ? &snrt_dma_load_2d_tile_transpose : &snrt_dma_load_2d_tile;
+    const snrt_dma_load_2d_tile_transpose_t store_tile_C = impl.tc_tile ? &snrt_dma_store_2d_tile_transpose : &snrt_dma_store_2d_tile;
 
     if (impl.bench) snrt_mcycle();
 
@@ -130,7 +137,7 @@ void SNBLAS_GEMM_TILING(2dpipe, FLOAT_T, IS_DM_CORE) (const SnblasGemmInfo info,
             if (IS_DM_CORE) {
                 dump_ib(ib);
                 dump_jb(jb);
-                snrt_dma_load_2d_tile(l1_C, (void*) C, ib, jb, L1_M, L1_N, ldc, FP64);
+                (*load_tile_C)(l1_C, (void*) C, ib, jb, L1_M, L1_N, ldc, FP64);
                 if (ib_prev >= 0 /* && jb_prev >= 0 */) storeC = true;
             }
 
@@ -151,8 +158,7 @@ void SNBLAS_GEMM_TILING(2dpipe, FLOAT_T, IS_DM_CORE) (const SnblasGemmInfo info,
                     dump_kb(kb);
                     if (loadA) {
                         if (c2cL1_A == NULL)
-                            snrt_dma_load_2d_tile(l1_A, (void*) A, ib, kb, L1_M, L1_K, lda,
-                                                FP64);
+                            (*load_tile_A)(l1_A, (void*) A, ib, kb, L1_M, L1_K, lda, FP64);
                         else {
                             FLOAT_T* const c2c_A = c2cL1_A[l1Id_A].A;
                             snrt_dma_start_1d(l1_A, c2c_A, L1_M * L1_K * FP64);
@@ -160,8 +166,7 @@ void SNBLAS_GEMM_TILING(2dpipe, FLOAT_T, IS_DM_CORE) (const SnblasGemmInfo info,
                     }
                     if (loadB) {
                         if (c2cL1_B == NULL)
-                            snrt_dma_load_2d_tile(l1_B, (void*) B, kb, jb, L1_K, L1_N, ldb,
-                                                FP64);
+                            (*load_tile_B)(l1_B, (void*) B, kb, jb, L1_K, L1_N, ldb, FP64);
                         else {
                             FLOAT_T* const c2c_B = c2cL1_B[l1Id_B].B;
                             snrt_dma_start_1d(l1_B, c2c_B, L1_K * L1_N * FP64);
@@ -198,8 +203,7 @@ void SNBLAS_GEMM_TILING(2dpipe, FLOAT_T, IS_DM_CORE) (const SnblasGemmInfo info,
                 if (IS_DM_CORE) {
                     if (storeC) {
                         storeC = false;
-                        snrt_dma_store_2d_tile(C, l1[!l1Id_C].C, ib_prev,
-                                               jb_prev, L1_M, L1_N, ldc, FP64);
+                        (*store_tile_C)(C, l1[!l1Id_C].C, ib_prev, jb_prev, L1_M, L1_N, ldc, FP64);
                     }
                 }
                 kb_prev = kb;
@@ -220,8 +224,7 @@ void SNBLAS_GEMM_TILING(2dpipe, FLOAT_T, IS_DM_CORE) (const SnblasGemmInfo info,
 
         // store final tile
         // if (ib_prev >= 0 && jb_prev >= 0) {
-            snrt_dma_store_2d_tile(C, l1[!l1Id_C].C, ib_prev, jb_prev, L1_M, L1_N,
-                                ldc, FP64);
+            (*store_tile_C)(C, l1[!l1Id_C].C, ib_prev, jb_prev, L1_M, L1_N, ldc, FP64);
             snrt_dma_wait_all();
         // }
     } else {
