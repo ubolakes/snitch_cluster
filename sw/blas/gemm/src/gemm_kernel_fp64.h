@@ -1,5 +1,6 @@
 #include "gemm_decls.h"
 
+#define _FMADD_UNROLL 8
 extern void snblas_gemm_cluster_kernel_init_fp64(const SnblasGemmInfo info);
 inline void snblas_gemm_cluster_kernel_init_fp64(const SnblasGemmInfo info) {
     uint32_t p[3], P[3];
@@ -18,21 +19,21 @@ inline void snblas_gemm_cluster_kernel_init_fp64(const SnblasGemmInfo info) {
     // Unrolling factor of most inner loop.
     // Should be at least as high as the FMA delay
     // for maximum utilization
-    const uint32_t unroll = 8;
+    const uint32_t unroll = _FMADD_UNROLL;
 
     // SSR strides and bounds only have to be configured
     // once in the beginning
     // First matrix is stored in transposed format
     if (ta) {
         const uint32_t ssr0_b[4] = {unroll, K, N / unroll, M};
-        const uint32_t ssr0_i[4] = {0, 8 * lda, 0, 8 * 8};
+        const uint32_t ssr0_i[4] = {0, sizeof(fp64) * lda, 0, unroll * sizeof(fp64)};
 
         snrt_ssr_loop_3d(SNRT_SSR_DM0, ssr0_b[1], ssr0_b[2], ssr0_b[3],
                          ssr0_i[1], ssr0_i[2], ssr0_i[3]);
         snrt_ssr_repeat(SNRT_SSR_DM0, unroll);
     } else {
         const uint32_t ssr0_b[4] = {unroll, K, N / unroll, M};
-        const uint32_t ssr0_i[4] = {0, 8, 0, 8 * lda};
+        const uint32_t ssr0_i[4] = {0, sizeof(fp64), 0, sizeof(fp64) * lda};
 
         snrt_ssr_loop_3d(SNRT_SSR_DM0, ssr0_b[1], ssr0_b[2], ssr0_b[3],
                          ssr0_i[1], ssr0_i[2], ssr0_i[3]);
@@ -42,14 +43,14 @@ inline void snblas_gemm_cluster_kernel_init_fp64(const SnblasGemmInfo info) {
     // Second matrix is stored in transposed format
     if (tb) {
         const uint32_t ssr1_b[4] = {unroll, K, N / unroll, M};
-        const uint32_t ssr1_i[4] = {8 * ldb, 8, 8 * ldb * unroll, 0};
+        const uint32_t ssr1_i[4] = {sizeof(fp64) * ldb, sizeof(fp64), unroll * ldb * sizeof(fp64), 0};
 
         snrt_ssr_loop_4d(SNRT_SSR_DM1, ssr1_b[0], ssr1_b[1], ssr1_b[2],
                          ssr1_b[3], ssr1_i[0], ssr1_i[1], ssr1_i[2],
                          ssr1_i[3]);
     } else {
         const uint32_t ssr1_b[4] = {unroll, K, N / unroll, M};
-        const uint32_t ssr1_i[4] = {8, 8 * ldb, 8 * unroll, 0};
+        const uint32_t ssr1_i[4] = {sizeof(fp64), sizeof(fp64) * ldb, unroll * sizeof(fp64), 0};
 
         snrt_ssr_loop_4d(SNRT_SSR_DM1, ssr1_b[0], ssr1_b[1], ssr1_b[2],
                          ssr1_b[3], ssr1_i[0], ssr1_i[1], ssr1_i[2],
@@ -85,7 +86,9 @@ inline void snblas_gemm_cluster_kernel_compute_fp64(const SnblasGemmInfo info, c
     const double alpha    = args.alpha;
     const double beta     = args.beta;
     
-    const uint32_t unroll = 8;
+    // Unroll by at least fmadd.d latency to fill pipeline
+    // Additional unrolling reduces indexing overhead but needs available registers
+    const uint32_t unroll = _FMADD_UNROLL;
 
     // SSR start address need to be configured each time
     snrt_ssr_read(SNRT_SSR_DM0, SNRT_SSR_4D, (void*) A);
@@ -122,7 +125,7 @@ inline void snblas_gemm_cluster_kernel_compute_fp64(const SnblasGemmInfo info, c
             }
 
             asm volatile(
-                "frep.o %[n_frep], 8, 0, 0 \n"
+                "frep.o %[n_frep], %[unroll], 0, 0 \n"
                 "fmadd.d %[c0], ft0, ft1, %[c0] \n"
                 "fmadd.d %[c1], ft0, ft1, %[c1] \n"
                 "fmadd.d %[c2], ft0, ft1, %[c2] \n"
@@ -134,8 +137,10 @@ inline void snblas_gemm_cluster_kernel_compute_fp64(const SnblasGemmInfo info, c
                 : [ c0 ] "+f"(c[0]), [ c1 ] "+f"(c[1]), [ c2 ] "+f"(c[2]),
                   [ c3 ] "+f"(c[3]), [ c4 ] "+f"(c[4]), [ c5 ] "+f"(c[5]),
                   [ c6 ] "+f"(c[6]), [ c7 ] "+f"(c[7])
-                : [ n_frep ] "r"(K - 1)
+                : [ n_frep ] "r"(K - 1), [ unroll ] "i"(unroll)
                 : "ft0", "ft1", "ft2");
+
+                // BUG: "r"(unroll) causes clang compiler to crash, use "i" instead
 
             // Store results back
             C[cIdx + 0] = c[0];
@@ -159,6 +164,6 @@ inline void snblas_gemm_cluster_kernel_compute_fp64(const SnblasGemmInfo info, c
 extern void snblas_gemm_cluster_kernel_fp64(const SnblasGemmInfo info, const SnblasGemmArgs_fp64 args);
 inline void snblas_gemm_cluster_kernel_fp64(const SnblasGemmInfo info, const SnblasGemmArgs_fp64 args) {
     snblas_gemm_cluster_kernel_init_fp64(info);
-    snblas_gemm_cluster_kernel_compute_fp64(info, args);
+    snblas_gemm_cluster_kernel_compute_fp64(info, args, false);
     snblas_gemm_cluster_kernel_deinit_fp64(info);
 }
