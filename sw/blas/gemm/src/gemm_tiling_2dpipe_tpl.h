@@ -10,8 +10,6 @@
 
 void SNBLAS_GEMM_TILING(2dpipe, FLOAT_T, IS_DM_CORE) (const SnblasGemmInfo info, const SNBLAS_GEMM_ARGS(FLOAT_T) args, const SnblasGemmImpl impl) {
 
-#define USE_C2C_TILES true
-
     /**
      * Problem is double buffered in L1. The buffer that is used is toggled at
      * each iteration. The DMA cores are one index step ahead so they load the

@@ -1,5 +1,11 @@
 #include "gemm_decls.h"
 
+/**
+ * Test DMA effective bandwidth.
+ * Transfers an array from HBM to TCDM, 
+ * then rotates between cluster TCDMs with C2C communication, 
+ * then stores the result back to HBM.
+*/
 void dma_xfer_test(const double* A, const uint32_t N, const bool bench) {
     if (!snrt_is_dm_core()) return;
 

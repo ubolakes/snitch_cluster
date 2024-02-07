@@ -23,6 +23,33 @@ typedef __fp16 v4f16 __attribute__((vector_size(8)));
 typedef char v8f8 __attribute__((vector_size(8)));
 #endif
 
+/**
+ * \brief Each cluster performs a GEMM for A, B, C inside each TCDM
+ */
+void gemm_cluster_kernel_baseline(double alpha, double beta, uint32_t M, uint32_t N,
+                                  uint32_t K, double* const A, double* const B,
+                                  double* const C, int lda, int ldb, int ldc) {
+    uint32_t p[3], P[3];
+    ocrt_thread_idx(p);
+    ocrt_compute_thread_num(P);
+
+    for (uint32_t i = p[0]; i < M; i += P[0]) {
+        for (uint32_t j = 0; j < N; j++) {
+            uint32_t cIdx = i * ldc + j;  // C[i][j]
+            register double c0 = beta * C[cIdx];
+
+            for (uint32_t k = 0; k < K; k++) {
+                uint32_t aIdx = i * lda + k;  // A[i][k]
+                uint32_t bIdx = k * ldb + j;  // B[k][j]
+
+                c0 += A[aIdx] * B[bIdx];
+            }
+            C[cIdx] = c0;
+        }
+    }
+    snrt_fpu_fence();
+}
+
 void gemm_fp64_baseline(uint32_t M, uint32_t N, uint32_t K, double* A,
                         uint32_t ldA, uint32_t ta, double* B, uint32_t ldB,
                         uint32_t tb, double* C, uint32_t ldC, double ALPHA) {

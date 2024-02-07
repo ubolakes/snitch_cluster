@@ -21,11 +21,12 @@
     }
 
     gemmImpl: {
-        method: "baseline",
-        L1_M: 8,
-        L1_N: 8,
-        L1_K: 8,
-        ta_tile: false,
+        method: "2dpipe",
+        use_c2c_tiles: true,
+        L1_M: 16,
+        L1_N: 16,
+        L1_K: 16,
+        ta_tile: true,
         tb_tile: false,
         tc_tile: false, // not implemented
         expand: 0,
