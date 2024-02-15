@@ -16,8 +16,8 @@
     }
 
     gemmArgs: { // C = alpha * A * B + beta * C
-        beta: 0,
-        alpha: 1,
+        beta: 1,  // only beta={0,1} supported
+        alpha: 1, // not implemented
     }
 
     gemmImpl: {

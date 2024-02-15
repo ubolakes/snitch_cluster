@@ -312,6 +312,14 @@ inline snrt_dma_txid_t snrt_dma_store_2d_tile_transpose(
     return prev_txid;
 }
 
+inline snrt_dma_txid_t load_zero_tile(
+    void *dst, void *src, size_t tile_x1_idx, size_t tile_x0_idx,
+    size_t tile_x1_size, size_t tile_x0_size, size_t full_x0_size,
+    uint32_t prec) {
+    memset(dst, 0, tile_x1_size * tile_x0_size * prec);
+    return -1;
+}
+
 //================================================================================
 // Reduction functions
 //================================================================================

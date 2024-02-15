@@ -75,7 +75,8 @@ void SNBLAS_GEMM_TILING(baseline, FLOAT_T, IS_DM_CORE) (const SnblasGemmInfo inf
     // create function ptr for dma loading
     const snrt_dma_load_2d_tile_transpose_t load_tile_A = impl.ta_tile ? &snrt_dma_load_2d_tile_transpose : &snrt_dma_load_2d_tile;
     const snrt_dma_load_2d_tile_transpose_t load_tile_B = impl.tb_tile ? &snrt_dma_load_2d_tile_transpose : &snrt_dma_load_2d_tile;
-    const snrt_dma_load_2d_tile_transpose_t load_tile_C = impl.tc_tile ? &snrt_dma_load_2d_tile_transpose : &snrt_dma_load_2d_tile;
+    const snrt_dma_load_2d_tile_transpose_t load_tile_C = (args.beta == (FLOAT_T)0.0) ? &load_zero_tile : 
+                                                          impl.tc_tile ? &snrt_dma_load_2d_tile_transpose : &snrt_dma_load_2d_tile;
     const snrt_dma_load_2d_tile_transpose_t store_tile_C = impl.tc_tile ? &snrt_dma_store_2d_tile_transpose : &snrt_dma_store_2d_tile;
     
     // TODO: place memory barrier before sync
@@ -93,7 +94,7 @@ void SNBLAS_GEMM_TILING(baseline, FLOAT_T, IS_DM_CORE) (const SnblasGemmInfo inf
             if (IS_DM_CORE) {
                 dump_ib(ib);
                 dump_jb(jb);
-                (*load_tile_C)(l1_C, (void*) C, ib, jb, L1_M, L1_N, ldc, FP64);
+                (*load_tile_C)(l1_C, (void*) C, ib, jb, L1_M, L1_N, ldc, FP64); // apply args.beta here
                 if (ib_prev >= 0 && jb_prev >= 0) storeC = true;
             }
 
@@ -116,7 +117,7 @@ void SNBLAS_GEMM_TILING(baseline, FLOAT_T, IS_DM_CORE) (const SnblasGemmInfo inf
                     tileArgs.B     = l1_B;
                     tileArgs.C     = l1_C;
                     tileArgs.alpha = alpha;
-                    tileArgs.beta  = beta;
+                    tileArgs.beta  = 1; // accumulate partial result, args.beta already applied by dma
                     
                     SNBLAS_GEMM_CLUSTER_KERNEL_COMPUTE(FLOAT_T)(tileInfo, tileArgs, impl);
                 }
