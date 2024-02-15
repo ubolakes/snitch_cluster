@@ -6,14 +6,15 @@ inline void snblas_gemm_cluster_kernel_init_fp64(const SnblasGemmInfo info, cons
     ocrt_thread_idx(p);
     ocrt_compute_thread_num(P);
 
+    const uint32_t ta  = info.ta;
+    const uint32_t tb  = info.tb;
+    const uint32_t tc  = info.tc;
     const uint32_t M   = info.M / P[0];
     const uint32_t N   = info.N;
     const uint32_t K   = info.K;
-    const uint32_t lda = info.lda * P[0];
+    const uint32_t lda = info.lda;
     const uint32_t ldb = info.ldb;
     const uint32_t ldc = info.ldc * P[0];
-    const uint32_t ta  = info.ta;
-    const uint32_t tb  = info.tb;
 
     // Unrolling factor of most inner loop.
     // Should be at least as high as the FMA delay
@@ -23,37 +24,38 @@ inline void snblas_gemm_cluster_kernel_init_fp64(const SnblasGemmInfo info, cons
     // SSR strides and bounds only have to be configured
     // once in the beginning
     // First matrix is stored in transposed format
+    //            loop order = {j0,     k, j1,         i}
+    const uint32_t ssr0_b[4] = {unroll, K, N / unroll, M};
     if (ta) {
-        const uint32_t ssr0_b[4] = {unroll, K, N / unroll, M};
-        const uint32_t ssr0_i[4] = {0, sizeof(fp64) * lda, 0, unroll * sizeof(fp64)};
+        const uint32_t ssr0_i[4] = {0, lda, 0, P[0]};
 
         snrt_ssr_loop_3d(SNRT_SSR_DM0, ssr0_b[1], ssr0_b[2], ssr0_b[3],
-                         ssr0_i[1], ssr0_i[2], ssr0_i[3]);
-        snrt_ssr_repeat(SNRT_SSR_DM0, unroll);
+                                       ssr0_i[1] * sizeof(fp64), ssr0_i[2] * sizeof(fp64), ssr0_i[3] * sizeof(fp64));
+        snrt_ssr_repeat(SNRT_SSR_DM0, unroll); // because ssr0_i[0] == 0
     } else {
-        const uint32_t ssr0_b[4] = {unroll, K, N / unroll, M};
-        const uint32_t ssr0_i[4] = {0, sizeof(fp64), 0, sizeof(fp64) * lda};
+
+        const uint32_t ssr0_i[4] = {0, 1, 0, lda * P[0]};
 
         snrt_ssr_loop_3d(SNRT_SSR_DM0, ssr0_b[1], ssr0_b[2], ssr0_b[3],
-                         ssr0_i[1], ssr0_i[2], ssr0_i[3]);
-        snrt_ssr_repeat(SNRT_SSR_DM0, unroll);
+                                       ssr0_i[1] * sizeof(fp64), ssr0_i[2] * sizeof(fp64), ssr0_i[3] * sizeof(fp64));
+        snrt_ssr_repeat(SNRT_SSR_DM0, unroll); // because ssr0_i[0] == 0
     }
 
     // Second matrix is stored in transposed format
+    const uint32_t ssr1_b[4] = {unroll, K, N / unroll, M};
     if (tb) {
-        const uint32_t ssr1_b[4] = {unroll, K, N / unroll, M};
-        const uint32_t ssr1_i[4] = {sizeof(fp64) * ldb, sizeof(fp64), unroll * ldb * sizeof(fp64), 0};
+        const uint32_t ssr1_i[4] = {ldb, 1, unroll * ldb, 0};
 
-        snrt_ssr_loop_4d(SNRT_SSR_DM1, ssr1_b[0], ssr1_b[1], ssr1_b[2],
-                         ssr1_b[3], ssr1_i[0], ssr1_i[1], ssr1_i[2],
-                         ssr1_i[3]);
+        snrt_ssr_loop_4d(SNRT_SSR_DM1, ssr1_b[0], ssr1_b[1], ssr1_b[2], ssr1_b[3], 
+                                       ssr1_i[0] * sizeof(fp64), ssr1_i[1] * sizeof(fp64), ssr1_i[2] * sizeof(fp64), ssr1_i[3] * sizeof(fp64));
+        snrt_ssr_repeat(SNRT_SSR_DM1, 1);
     } else {
-        const uint32_t ssr1_b[4] = {unroll, K, N / unroll, M};
-        const uint32_t ssr1_i[4] = {sizeof(fp64), sizeof(fp64) * ldb, unroll * sizeof(fp64), 0};
 
-        snrt_ssr_loop_4d(SNRT_SSR_DM1, ssr1_b[0], ssr1_b[1], ssr1_b[2],
-                         ssr1_b[3], ssr1_i[0], ssr1_i[1], ssr1_i[2],
-                         ssr1_i[3]);
+        const uint32_t ssr1_i[4] = {1, ldb, unroll, 0};
+
+        snrt_ssr_loop_4d(SNRT_SSR_DM1, ssr1_b[0], ssr1_b[1], ssr1_b[2], ssr1_b[3], 
+                                       ssr1_i[0] * sizeof(fp64), ssr1_i[1] * sizeof(fp64), ssr1_i[2] * sizeof(fp64), ssr1_i[3] * sizeof(fp64));
+        snrt_ssr_repeat(SNRT_SSR_DM1, 1);
     }
 
     snrt_ssr_enable();
@@ -70,20 +72,21 @@ inline void snblas_gemm_cluster_kernel_compute_fp64(const SnblasGemmInfo info, c
     ocrt_thread_idx(p);
     ocrt_compute_thread_num(P);
 
+    const uint32_t ta  = info.ta;
+    const uint32_t tb  = info.tb;
+    const uint32_t tc  = info.tc;
     const uint32_t M   = info.M / P[0]; // Compute fraction of C rows every core computes
     const uint32_t N   = info.N;
     const uint32_t K   = info.K;
-    const uint32_t lda = info.lda * P[0];
+    const uint32_t lda = info.lda;
     const uint32_t ldb = info.ldb;
-    const uint32_t ldc = info.ldc * P[0];
-    const uint32_t ta  = info.ta;
-    const uint32_t tb  = info.tb;
+    const uint32_t ldc = info.ldc * (ta ? P[0] : 1);
 
-    const double* const A = args.A + p[0] * info.lda;
+    const double* const A = args.A + p[0] * (ta ? 1 : lda);
     const double* const B = args.B;
-          double* const C = args.C + p[0] * info.ldc;
+          double* const C = args.C + p[0] * (tc ? 1 : info.ldc); // * info.ldc;
     const double alpha    = args.alpha;
-    const double beta     = args.beta;
+    // const double beta     = args.beta; // beta=1
     
     // Unroll by at least fmadd.d latency to fill pipeline
     // Additional unrolling reduces indexing overhead but needs available registers

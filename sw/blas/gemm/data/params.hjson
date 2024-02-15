@@ -10,8 +10,8 @@
         M: 192,
         N: 16,
         K: 16,
-        ta: false,
-        tb: true, // must be true for SIMD
+        ta: false, // not implemented, false = row-major, true = col-major
+        tb: false, // not implemented
         tc: false, // not implemented
     }
 
@@ -30,7 +30,7 @@
         tb_tile: false,
         tc_tile: false, // not implemented
         expand: 0,
-        fmadd_d_unroll: 8,
+        fmadd_d_unroll: 8, // requires code modification
     }
     
     bench: {

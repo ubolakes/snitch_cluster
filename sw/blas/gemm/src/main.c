@@ -28,20 +28,16 @@ int main() {
     // load into TCDM
     uint32_t iters = bench_iters;
 
-    uint32_t lda = K;
-    uint32_t ldb = N;
-    uint32_t ldc = N;
-
     SnblasGemmInfo gemmInfo = {0};
     gemmInfo.M   = M;
     gemmInfo.N   = N;
     gemmInfo.K   = K;
-    gemmInfo.lda = lda;
-    gemmInfo.ldb = ldb;
-    gemmInfo.ldc = ldc;
     gemmInfo.ta  = TA;
     gemmInfo.tb  = TB;
     gemmInfo.tc  = TC;
+    gemmInfo.lda = gemmInfo.ta ? gemmInfo.M : gemmInfo.K;
+    gemmInfo.ldb = gemmInfo.tb ? gemmInfo.K : gemmInfo.N;
+    gemmInfo.ldc = gemmInfo.tc ? gemmInfo.M : gemmInfo.N;
     
     SNBLAS_GEMM_ARGS(DTYPE) gemmArgs = {0};
     gemmArgs.A     = a;

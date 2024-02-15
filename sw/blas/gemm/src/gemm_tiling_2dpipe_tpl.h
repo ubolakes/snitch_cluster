@@ -158,18 +158,14 @@ void SNBLAS_GEMM_TILING(2dpipe, FLOAT_T, IS_DM_CORE) (const SnblasGemmInfo info,
                     if (loadA) {
                         if (c2cL1_A == NULL)
                             (*load_tile_A)(l1_A, (void*) A, ib, kb, L1_M, L1_K, lda, FP64);
-                        else {
-                            FLOAT_T* const c2c_A = c2cL1_A[l1Id_A].A;
-                            snrt_dma_start_1d(l1_A, c2c_A, L1_M * L1_K * FP64);
-                        }
+                        else
+                            snrt_dma_start_1d(l1_A, c2cL1_A[l1Id_A].A, L1_M * L1_K * FP64);
                     }
                     if (loadB) {
                         if (c2cL1_B == NULL)
                             (*load_tile_B)(l1_B, (void*) B, kb, jb, L1_K, L1_N, ldb, FP64);
-                        else {
-                            FLOAT_T* const c2c_B = c2cL1_B[l1Id_B].B;
-                            snrt_dma_start_1d(l1_B, c2c_B, L1_K * L1_N * FP64);
-                        }
+                        else
+                            snrt_dma_start_1d(l1_B, c2cL1_B[l1Id_B].B, L1_K * L1_N * FP64);
                     }
 
                     snrt_dma_wait_all();

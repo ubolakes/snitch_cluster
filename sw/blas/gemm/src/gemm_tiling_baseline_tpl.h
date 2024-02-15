@@ -71,6 +71,9 @@ void SNBLAS_GEMM_TILING(baseline, FLOAT_T, IS_DM_CORE) (const SnblasGemmInfo inf
     tileInfo.ta  = info.ta ^ impl.ta_tile;
     tileInfo.tb  = info.tb ^ impl.tb_tile;
     tileInfo.tc  = info.tc ^ impl.tc_tile; // TODO: implement transposed blocking
+    tileInfo.lda = tileInfo.ta ? tileInfo.M : tileInfo.K;
+    tileInfo.ldb = tileInfo.tb ? tileInfo.K : tileInfo.N;
+    tileInfo.ldc = tileInfo.tc ? tileInfo.M : tileInfo.N;
 
     // create function ptr for dma loading
     const snrt_dma_load_2d_tile_transpose_t load_tile_A = impl.ta_tile ? &snrt_dma_load_2d_tile_transpose : &snrt_dma_load_2d_tile;

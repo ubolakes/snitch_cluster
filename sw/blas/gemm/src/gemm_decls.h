@@ -42,12 +42,12 @@ typedef struct {
     uint32_t M;
     uint32_t N;
     uint32_t K;
+    uint32_t ta; // false = row-major, true = col-major
+    uint32_t tb;
+    uint32_t tc;
     uint32_t lda;
     uint32_t ldb;
     uint32_t ldc;
-    uint32_t ta;
-    uint32_t tb;
-    uint32_t tc;
 } SnblasGemmInfo;
 
 /**
