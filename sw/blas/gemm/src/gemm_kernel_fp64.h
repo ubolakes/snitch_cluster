@@ -9,12 +9,12 @@ inline void snblas_gemm_cluster_kernel_init_fp64(const SnblasGemmInfo info, cons
     const uint32_t ta  = info.ta;
     const uint32_t tb  = info.tb;
     const uint32_t tc  = info.tc;
-    const uint32_t M   = info.M / P[0];
+    const uint32_t M   = info.M;
     const uint32_t N   = info.N;
     const uint32_t K   = info.K;
     const uint32_t lda = info.lda;
     const uint32_t ldb = info.ldb;
-    const uint32_t ldc = info.ldc * P[0];
+    const uint32_t ldc = info.ldc;
 
     // Unrolling factor of most inner loop.
     // Should be at least as high as the FMA delay
@@ -25,7 +25,7 @@ inline void snblas_gemm_cluster_kernel_init_fp64(const SnblasGemmInfo info, cons
     // once in the beginning
     // First matrix is stored in transposed format
     //            loop order = {j0,     k, j1,         i}
-    const uint32_t ssr0_b[4] = {unroll, K, N / unroll, M};
+    const uint32_t ssr0_b[4] = {unroll, K, N / unroll, M / P[0]};
     if (ta) {
         const uint32_t ssr0_i[4] = {0, lda, 0, P[0]};
 
@@ -42,7 +42,7 @@ inline void snblas_gemm_cluster_kernel_init_fp64(const SnblasGemmInfo info, cons
     }
 
     // Second matrix is stored in transposed format
-    const uint32_t ssr1_b[4] = {unroll, K, N / unroll, M};
+    const uint32_t ssr1_b[4] = {unroll, K, N / unroll, M / P[0]};
     if (tb) {
         const uint32_t ssr1_i[4] = {ldb, 1, unroll * ldb, 0};
 
@@ -80,11 +80,11 @@ inline void snblas_gemm_cluster_kernel_compute_fp64(const SnblasGemmInfo info, c
     const uint32_t K   = info.K;
     const uint32_t lda = info.lda;
     const uint32_t ldb = info.ldb;
-    const uint32_t ldc = info.ldc * (ta ? P[0] : 1);
+    const uint32_t ldc = info.ldc * P[0];
 
     const double* const A = args.A + p[0] * (ta ? 1 : lda);
     const double* const B = args.B;
-          double* const C = args.C + p[0] * (tc ? 1 : info.ldc); // * info.ldc;
+          double* const C = args.C + p[0] * info.ldc;
     const double alpha    = args.alpha;
     // const double beta     = args.beta; // beta=1
     

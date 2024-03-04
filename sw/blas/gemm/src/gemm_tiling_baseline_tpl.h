@@ -25,9 +25,9 @@ void SNBLAS_GEMM_TILING(baseline, FLOAT_T, IS_DM_CORE) (const SnblasGemmInfo inf
     const uint32_t M   = info.M;
     const uint32_t N   = info.N;
     const uint32_t K   = info.K;
-    const uint32_t lda = info.lda;
-    const uint32_t ldb = info.ldb;
-    const uint32_t ldc = info.ldc;
+    const uint32_t lda = info.ta ? info.M : info.K;
+    const uint32_t ldb = info.tb ? info.K : info.N;
+    const uint32_t ldc = info.tc ? info.M : info.N;
     const uint32_t ta  = info.ta;
     const uint32_t tb  = info.tb;
 
@@ -65,9 +65,6 @@ void SNBLAS_GEMM_TILING(baseline, FLOAT_T, IS_DM_CORE) (const SnblasGemmInfo inf
     tileInfo.M   = L1_M;
     tileInfo.N   = L1_N;
     tileInfo.K   = L1_K;
-    tileInfo.lda = L1_LDA;
-    tileInfo.ldb = L1_LDB;
-    tileInfo.ldc = L1_LDC;
     tileInfo.ta  = info.ta ^ impl.ta_tile;
     tileInfo.tb  = info.tb ^ impl.tb_tile;
     tileInfo.tc  = info.tc ^ impl.tc_tile; // TODO: implement transposed blocking
@@ -111,8 +108,14 @@ void SNBLAS_GEMM_TILING(baseline, FLOAT_T, IS_DM_CORE) (const SnblasGemmInfo inf
 
                 if (IS_DM_CORE) {
                     dump_kb(kb);
-                    (*load_tile_A)(l1_A, (void*) A, ib, kb, L1_M, L1_K, lda, FP64);
-                    (*load_tile_B)(l1_B, (void*) B, kb, jb, L1_K, L1_N, ldb, FP64);
+                    if (info.ta) // TODO: swap indices for transposed blocking more elegantly
+                        (*load_tile_A)(l1_A, (void*) A, kb, ib, L1_K, L1_M, lda, FP64);
+                    else
+                        (*load_tile_A)(l1_A, (void*) A, ib, kb, L1_M, L1_K, lda, FP64);
+                    if (info.tb)
+                        (*load_tile_B)(l1_B, (void*) B, jb, kb, L1_N, L1_K, ldb, FP64);
+                    else
+                        (*load_tile_B)(l1_B, (void*) B, kb, jb, L1_K, L1_N, ldb, FP64);
                     snrt_dma_wait_all();
                 } else {
                     GemmArgs tileArgs = {0};
