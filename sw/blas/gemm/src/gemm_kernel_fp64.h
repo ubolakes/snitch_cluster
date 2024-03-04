@@ -75,16 +75,16 @@ inline void snblas_gemm_cluster_kernel_compute_fp64(const SnblasGemmInfo info, c
     const uint32_t ta  = info.ta;
     const uint32_t tb  = info.tb;
     const uint32_t tc  = info.tc;
-    const uint32_t M   = info.M / P[0]; // Compute fraction of C rows every core computes
+    const uint32_t M   = info.M; // Compute fraction of C rows every core computes
     const uint32_t N   = info.N;
     const uint32_t K   = info.K;
     const uint32_t lda = info.lda;
     const uint32_t ldb = info.ldb;
-    const uint32_t ldc = info.ldc * P[0];
+    const uint32_t ldc = info.ldc;
 
     const double* const A = args.A + p[0] * (ta ? 1 : lda);
     const double* const B = args.B;
-          double* const C = args.C + p[0] * info.ldc;
+          double* const C = args.C;
     const double alpha    = args.alpha;
     // const double beta     = args.beta; // beta=1
     
@@ -96,8 +96,8 @@ inline void snblas_gemm_cluster_kernel_compute_fp64(const SnblasGemmInfo info, c
     snrt_ssr_read(SNRT_SSR_DM0, SNRT_SSR_4D, (void*) A);
     snrt_ssr_read(SNRT_SSR_DM1, SNRT_SSR_4D, (void*) B);
 
-    if (impl.bench) snrt_mcycle();
-    for (uint32_t m = 0; m < M; m++) {
+    // if (impl.bench) snrt_mcycle();
+    for (uint32_t m = p[0]; m < M; m += P[0]) {
         uint32_t n = 0;
         for (; n < N; n += unroll) {
             double c[unroll];
