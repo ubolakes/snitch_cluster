@@ -61,9 +61,6 @@ typedef struct {
     bool tc_tile;
 } SnblasGemmImpl;
 
-// #define L1_M 8 // Moved to datagen
-// #define L1_N 8
-// #define L1_K 8
 #define L1_LDA L1_K
 #define L1_LDB L1_N
 #define L1_LDC L1_N
@@ -105,4 +102,4 @@ typedef struct {
 
 
 // -- Function pointer typedefs
-typedef snrt_dma_txid_t (*snrt_dma_load_2d_tile_transpose_t)(void *, void *, size_t, size_t, size_t, size_t, size_t, uint32_t);
+typedef snrt_dma_txid_t (*snrt_dma_load_2d_tile_t)(void *, void *, size_t, size_t, size_t, size_t, size_t, uint32_t);

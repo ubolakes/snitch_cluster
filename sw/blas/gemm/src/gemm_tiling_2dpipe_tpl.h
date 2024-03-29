@@ -92,19 +92,19 @@ void SNBLAS_GEMM_TILING(2dpipe, FLOAT_T, IS_DM_CORE) (const SnblasGemmInfo info,
     tileInfo.M   = L1_M;
     tileInfo.N   = L1_N;
     tileInfo.K   = L1_K;
-    tileInfo.lda = L1_LDA;
-    tileInfo.ldb = L1_LDB;
-    tileInfo.ldc = L1_LDC;
-    tileInfo.ta  = info.ta ^ impl.ta_tile;
-    tileInfo.tb  = info.tb ^ impl.tb_tile;
-    tileInfo.tc  = info.tc ^ impl.tc_tile; // TODO: implement transposed blocking
+    tileInfo.ta  = info.ta ^ TA_TILE;
+    tileInfo.tb  = info.tb ^ TB_TILE;
+    tileInfo.tc  = info.tc ^ TC_TILE; // TODO: implement transposed blocking
+    tileInfo.lda = tileInfo.ta ? tileInfo.M : tileInfo.K;
+    tileInfo.ldb = tileInfo.tb ? tileInfo.K : tileInfo.N;
+    tileInfo.ldc = tileInfo.tc ? tileInfo.M : tileInfo.N;
 
     // create function ptr for dma loading
-    const snrt_dma_load_2d_tile_transpose_t load_tile_A = impl.ta_tile ? &snrt_dma_load_2d_tile_transpose : &snrt_dma_load_2d_tile;
-    const snrt_dma_load_2d_tile_transpose_t load_tile_B = impl.tb_tile ? &snrt_dma_load_2d_tile_transpose : &snrt_dma_load_2d_tile;
-    const snrt_dma_load_2d_tile_transpose_t load_tile_C = (args.beta == (FLOAT_T)0.0) ? &load_zero_tile : 
-                                                          impl.tc_tile ? &snrt_dma_load_2d_tile_transpose : &snrt_dma_load_2d_tile;
-    const snrt_dma_load_2d_tile_transpose_t store_tile_C = impl.tc_tile ? &snrt_dma_store_2d_tile_transpose : &snrt_dma_store_2d_tile;
+    const snrt_dma_load_2d_tile_t load_tile_A = TA_TILE ? &snrt_dma_load_2d_tile_transpose : &snrt_dma_load_2d_tile;
+    const snrt_dma_load_2d_tile_t load_tile_B = TB_TILE ? &snrt_dma_load_2d_tile_transpose : &snrt_dma_load_2d_tile;
+    const snrt_dma_load_2d_tile_t load_tile_C = (args.beta == (FLOAT_T)0.0) ? &load_zero_tile : 
+                                                TC_TILE ? &snrt_dma_load_2d_tile_transpose : &snrt_dma_load_2d_tile;
+    const snrt_dma_load_2d_tile_t store_tile_C = TC_TILE ? &snrt_dma_store_2d_tile_transpose : &snrt_dma_store_2d_tile;
 
     if (impl.bench) snrt_mcycle();
 
@@ -136,12 +136,11 @@ void SNBLAS_GEMM_TILING(2dpipe, FLOAT_T, IS_DM_CORE) (const SnblasGemmInfo info,
             if (IS_DM_CORE) {
                 dump_ib(ib);
                 dump_jb(jb);
-                (*load_tile_C)(l1_C, (void*) C, ib, jb, L1_M, L1_N, ldc, FP64);
-                if (ib_prev >= 0 /* && jb_prev >= 0 */) storeC = true;
+                (*load_tile_C)(l1_C, (void*) C, ib, jb, L1_M, L1_N, ldc, FP64); // apply args.beta here
+                if (ib_prev >= 0 /* && jb_prev >= 0 */) storeC = true; // store after k-accumulation is complete
             }
 
             FOR_EACH(kb, 0, K / L1_K, 1, kb_dir, kb_prev) {
-
                 // Only load if the indices have changed, otherwise data is already loaded
                 const bool loadA = ib != ib_prev || kb != kb_prev;
                 const bool loadB = kb != kb_prev || jb != jb_prev;
@@ -157,13 +156,19 @@ void SNBLAS_GEMM_TILING(2dpipe, FLOAT_T, IS_DM_CORE) (const SnblasGemmInfo info,
                     dump_kb(kb);
                     if (loadA) {
                         if (c2cL1_A == NULL)
-                            (*load_tile_A)(l1_A, (void*) A, ib, kb, L1_M, L1_K, lda, FP64);
+                            (*load_tile_A)(l1_A, (void*) A, info.ta ? kb : ib, 
+                                                            info.ta ? ib : kb, 
+                                                            info.ta ? L1_K : L1_M, 
+                                                            info.ta ? L1_M : L1_K, lda, FP64);
                         else
                             snrt_dma_start_1d(l1_A, c2cL1_A[l1Id_A].A, L1_M * L1_K * FP64);
                     }
                     if (loadB) {
                         if (c2cL1_B == NULL)
-                            (*load_tile_B)(l1_B, (void*) B, kb, jb, L1_K, L1_N, ldb, FP64);
+                            (*load_tile_B)(l1_B, (void*) B, info.tb ? jb : kb, 
+                                                            info.tb ? kb : jb, 
+                                                            info.tb ? L1_N : L1_K, 
+                                                            info.tb ? L1_K : L1_N, ldb, FP64);
                         else
                             snrt_dma_start_1d(l1_B, c2cL1_B[l1Id_B].B, L1_K * L1_N * FP64);
                     }

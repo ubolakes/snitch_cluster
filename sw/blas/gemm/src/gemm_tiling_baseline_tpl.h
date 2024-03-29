@@ -65,22 +65,19 @@ void SNBLAS_GEMM_TILING(baseline, FLOAT_T, IS_DM_CORE) (const SnblasGemmInfo inf
     tileInfo.M   = L1_M;
     tileInfo.N   = L1_N;
     tileInfo.K   = L1_K;
-    tileInfo.ta  = info.ta ^ impl.ta_tile;
-    tileInfo.tb  = info.tb ^ impl.tb_tile;
-    tileInfo.tc  = info.tc ^ impl.tc_tile; // TODO: implement transposed blocking
+    tileInfo.ta  = info.ta ^ TA_TILE;
+    tileInfo.tb  = info.tb ^ TB_TILE;
+    tileInfo.tc  = info.tc ^ TC_TILE; // TODO: implement transposed blocking
     tileInfo.lda = tileInfo.ta ? tileInfo.M : tileInfo.K;
     tileInfo.ldb = tileInfo.tb ? tileInfo.K : tileInfo.N;
     tileInfo.ldc = tileInfo.tc ? tileInfo.M : tileInfo.N;
 
     // create function ptr for dma loading
-    const snrt_dma_load_2d_tile_transpose_t load_tile_A = impl.ta_tile ? &snrt_dma_load_2d_tile_transpose : &snrt_dma_load_2d_tile;
-    const snrt_dma_load_2d_tile_transpose_t load_tile_B = impl.tb_tile ? &snrt_dma_load_2d_tile_transpose : &snrt_dma_load_2d_tile;
-    const snrt_dma_load_2d_tile_transpose_t load_tile_C = (args.beta == (FLOAT_T)0.0) ? &load_zero_tile : 
-                                                          impl.tc_tile ? &snrt_dma_load_2d_tile_transpose : &snrt_dma_load_2d_tile;
-    const snrt_dma_load_2d_tile_transpose_t store_tile_C = impl.tc_tile ? &snrt_dma_store_2d_tile_transpose : &snrt_dma_store_2d_tile;
-    
-    // TODO: place memory barrier before sync
-    if (impl.bench) snrt_mcycle();
+    const snrt_dma_load_2d_tile_t load_tile_A = TA_TILE ? &snrt_dma_load_2d_tile_transpose : &snrt_dma_load_2d_tile;
+    const snrt_dma_load_2d_tile_t load_tile_B = TB_TILE ? &snrt_dma_load_2d_tile_transpose : &snrt_dma_load_2d_tile;
+    const snrt_dma_load_2d_tile_t load_tile_C = (args.beta == (FLOAT_T)0.0) ? &load_zero_tile : 
+                                                TC_TILE ? &snrt_dma_load_2d_tile_transpose : &snrt_dma_load_2d_tile;
+    const snrt_dma_load_2d_tile_t store_tile_C = TC_TILE ? &snrt_dma_store_2d_tile_transpose : &snrt_dma_store_2d_tile;
 
     if (!IS_DM_CORE) {
         SNBLAS_GEMM_CLUSTER_KERNEL_INIT(FLOAT_T)(tileInfo, impl);
@@ -95,7 +92,7 @@ void SNBLAS_GEMM_TILING(baseline, FLOAT_T, IS_DM_CORE) (const SnblasGemmInfo inf
                 dump_ib(ib);
                 dump_jb(jb);
                 (*load_tile_C)(l1_C, (void*) C, ib, jb, L1_M, L1_N, ldc, FP64); // apply args.beta here
-                if (ib_prev >= 0 && jb_prev >= 0) storeC = true;
+                if (ib_prev >= 0 && jb_prev >= 0) storeC = true; // store after k-accumulation is complete
             }
 
             for(kb = 0; kb < K / L1_K; kb++) {
@@ -108,14 +105,14 @@ void SNBLAS_GEMM_TILING(baseline, FLOAT_T, IS_DM_CORE) (const SnblasGemmInfo inf
 
                 if (IS_DM_CORE) {
                     dump_kb(kb);
-                    if (info.ta) // TODO: swap indices for transposed blocking more elegantly
-                        (*load_tile_A)(l1_A, (void*) A, kb, ib, L1_K, L1_M, lda, FP64);
-                    else
-                        (*load_tile_A)(l1_A, (void*) A, ib, kb, L1_M, L1_K, lda, FP64);
-                    if (info.tb)
-                        (*load_tile_B)(l1_B, (void*) B, jb, kb, L1_N, L1_K, ldb, FP64);
-                    else
-                        (*load_tile_B)(l1_B, (void*) B, kb, jb, L1_K, L1_N, ldb, FP64);
+                    (*load_tile_A)(l1_A, (void*) A, info.ta ? kb : ib, 
+                                                    info.ta ? ib : kb, 
+                                                    info.ta ? L1_K : L1_M, 
+                                                    info.ta ? L1_M : L1_K, lda, FP64);
+                    (*load_tile_B)(l1_B, (void*) B, info.tb ? jb : kb, 
+                                                    info.tb ? kb : jb, 
+                                                    info.tb ? L1_N : L1_K, 
+                                                    info.tb ? L1_K : L1_N, ldb, FP64);
                     snrt_dma_wait_all();
                 } else {
                     GemmArgs tileArgs = {0};
