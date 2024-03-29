@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /// Synchronize the integer and float pipelines.
-inline void snrt_fpu_fence() {
+inline __attribute__((always_inline)) void snrt_fpu_fence() {
     unsigned tmp;
     asm volatile(
         "fmv.x.w %0, fa0\n"

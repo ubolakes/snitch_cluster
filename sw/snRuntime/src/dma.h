@@ -6,7 +6,7 @@
 typedef uint32_t snrt_dma_txid_t;
 
 /// Initiate an asynchronous 1D DMA transfer with wide 64-bit pointers.
-inline snrt_dma_txid_t snrt_dma_start_1d_wideptr(uint64_t dst, uint64_t src,
+inline __attribute__((always_inline)) snrt_dma_txid_t snrt_dma_start_1d_wideptr(uint64_t dst, uint64_t src,
                                                  size_t size) {
     // Current DMA does not allow transfers with size == 0 (blocks)
     // TODO(colluca) remove this check once new DMA is integrated
@@ -60,7 +60,7 @@ inline snrt_dma_txid_t snrt_dma_start_1d(void *dst, const void *src,
 }
 
 /// Initiate an asynchronous 2D DMA transfer with wide 64-bit pointers.
-inline snrt_dma_txid_t snrt_dma_start_2d_wideptr(uint64_t dst, uint64_t src,
+inline __attribute__((always_inline)) snrt_dma_txid_t snrt_dma_start_2d_wideptr(uint64_t dst, uint64_t src,
                                                  size_t size, size_t dst_stride,
                                                  size_t src_stride,
                                                  size_t repeat) {
@@ -214,7 +214,7 @@ inline void snrt_dma_memset(void *ptr, uint8_t value, uint32_t len) {
 /// of shape (full_x1_size, full_x0_size). The specific tile is selected
 /// by the (tile_x1_idx, tile_x0_idx) tuple. Every element in the src and
 /// destination arrays has prec bytes.
-inline snrt_dma_txid_t snrt_dma_load_2d_tile(
+inline __attribute__((always_inline)) snrt_dma_txid_t snrt_dma_load_2d_tile(
     void *dst, void *src, size_t tile_x1_idx, size_t tile_x0_idx,
     size_t tile_x1_size, size_t tile_x0_size, size_t full_x0_size,
     uint32_t prec) {
@@ -234,7 +234,7 @@ inline snrt_dma_txid_t snrt_dma_load_2d_tile(
 }
 
 /// Load a tile and transpose it
-inline snrt_dma_txid_t snrt_dma_load_2d_tile_transpose(
+inline __attribute__((always_inline)) snrt_dma_txid_t snrt_dma_load_2d_tile_transpose(
     void *dst, void *src, size_t tile_x1_idx, size_t tile_x0_idx,
     size_t tile_x1_size, size_t tile_x0_size, size_t full_x0_size,
     uint32_t prec) {
@@ -246,6 +246,7 @@ inline snrt_dma_txid_t snrt_dma_load_2d_tile_transpose(
 
     snrt_dma_txid_t prev_txid = -1;
     // Initiate transfer
+    // TODO: pick smaller tile_x*_size to loop over, reduce dma xfers
     for (uint32_t i = 0; i < tile_x0_size; i++)
     {
         prev_txid = snrt_dma_start_2d(dst + i * tile_x1_size * prec, // dst
@@ -265,7 +266,7 @@ inline snrt_dma_txid_t snrt_dma_load_2d_tile_transpose(
 /// of shape (full_x1_size, full_x0_size). The specific tile is selected
 /// by the (tile_x1_idx, tile_x0_idx) tuple. Every element in the src and
 /// destination arrays has prec bytes.
-inline snrt_dma_txid_t snrt_dma_store_2d_tile(
+inline __attribute__((always_inline)) snrt_dma_txid_t snrt_dma_store_2d_tile(
     void *dst, void *src, size_t tile_x1_idx, size_t tile_x0_idx,
     size_t tile_x1_size, size_t tile_x0_size, size_t full_x0_size,
     uint32_t prec) {
@@ -285,7 +286,7 @@ inline snrt_dma_txid_t snrt_dma_store_2d_tile(
 }
 
 /// Store a tile and transpose it
-inline snrt_dma_txid_t snrt_dma_store_2d_tile_transpose(
+inline __attribute__((always_inline)) snrt_dma_txid_t snrt_dma_store_2d_tile_transpose(
     void *dst, void *src, size_t tile_x1_idx, size_t tile_x0_idx,
     size_t tile_x1_size, size_t tile_x0_size, size_t full_x0_size,
     uint32_t prec) {
@@ -312,7 +313,7 @@ inline snrt_dma_txid_t snrt_dma_store_2d_tile_transpose(
     return prev_txid;
 }
 
-inline snrt_dma_txid_t load_zero_tile(
+inline __attribute__((always_inline)) snrt_dma_txid_t load_zero_tile(
     void *dst, void *src, size_t tile_x1_idx, size_t tile_x0_idx,
     size_t tile_x1_size, size_t tile_x0_size, size_t full_x0_size,
     uint32_t prec) {

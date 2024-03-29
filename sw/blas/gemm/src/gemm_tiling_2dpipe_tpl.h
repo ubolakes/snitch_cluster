@@ -8,6 +8,8 @@
 
 #include "gemm_kernel.h"
 
+
+__attribute__((flatten)) // Force inline called functions
 void SNBLAS_GEMM_TILING(2dpipe, FLOAT_T, IS_DM_CORE) (const SnblasGemmInfo info, const SNBLAS_GEMM_ARGS(FLOAT_T) args, const SnblasGemmImpl impl) {
 
     /**

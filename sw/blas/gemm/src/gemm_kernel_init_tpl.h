@@ -12,7 +12,7 @@
 #endif
 
 extern void SNBLAS_GEMM_CLUSTER_KERNEL_INIT(FLOAT_T)(const SnblasGemmInfo info, const SnblasGemmImpl impl);
-inline void SNBLAS_GEMM_CLUSTER_KERNEL_INIT(FLOAT_T)(const SnblasGemmInfo info, const SnblasGemmImpl impl) {
+inline __attribute__((always_inline)) void SNBLAS_GEMM_CLUSTER_KERNEL_INIT(FLOAT_T)(const SnblasGemmInfo info, const SnblasGemmImpl impl) {
     uint32_t p[3], P[3];
     ocrt_thread_idx(p);
     ocrt_compute_thread_num(P);
@@ -51,7 +51,7 @@ inline void SNBLAS_GEMM_CLUSTER_KERNEL_INIT(FLOAT_T)(const SnblasGemmInfo info, 
 }
 
 extern void SNBLAS_GEMM_CLUSTER_KERNEL_DEINIT(FLOAT_T)(const SnblasGemmInfo info, const SnblasGemmImpl impl);
-inline void SNBLAS_GEMM_CLUSTER_KERNEL_DEINIT(FLOAT_T)(const SnblasGemmInfo info, const SnblasGemmImpl impl) {
+inline __attribute__((always_inline)) void SNBLAS_GEMM_CLUSTER_KERNEL_DEINIT(FLOAT_T)(const SnblasGemmInfo info, const SnblasGemmImpl impl) {
     snrt_ssr_disable();
 }
 
@@ -62,7 +62,7 @@ void SNBLAS_GEMM_CLUSTER_KERNEL_COMPUTE(FLOAT_T)(const SnblasGemmInfo info, cons
  * Use the `init`, `compute` and `deinit` directly to get maximum performance when running multiple times.
 */
 extern void SNBLAS_GEMM_CLUSTER_KERNEL(FLOAT_T)(const SnblasGemmInfo info, const SNBLAS_GEMM_ARGS(FLOAT_T) args, const SnblasGemmImpl impl);
-inline void SNBLAS_GEMM_CLUSTER_KERNEL(FLOAT_T)(const SnblasGemmInfo info, const SNBLAS_GEMM_ARGS(FLOAT_T) args, const SnblasGemmImpl impl) {
+inline __attribute__((always_inline)) void SNBLAS_GEMM_CLUSTER_KERNEL(FLOAT_T)(const SnblasGemmInfo info, const SNBLAS_GEMM_ARGS(FLOAT_T) args, const SnblasGemmImpl impl) {
     SNBLAS_GEMM_CLUSTER_KERNEL_INIT(FLOAT_T)(info, impl);
     SNBLAS_GEMM_CLUSTER_KERNEL_COMPUTE(FLOAT_T)(info, args, impl);
     SNBLAS_GEMM_CLUSTER_KERNEL_DEINIT(FLOAT_T)(info, impl);

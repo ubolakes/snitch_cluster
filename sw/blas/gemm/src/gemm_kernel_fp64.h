@@ -1,7 +1,7 @@
 #include "gemm_decls.h"
 
 extern void snblas_gemm_cluster_kernel_init_fp64(const SnblasGemmInfo info, const SnblasGemmImpl impl);
-inline void snblas_gemm_cluster_kernel_init_fp64(const SnblasGemmInfo info, const SnblasGemmImpl impl) {
+inline __attribute__((always_inline)) void snblas_gemm_cluster_kernel_init_fp64(const SnblasGemmInfo info, const SnblasGemmImpl impl) {
     uint32_t p[3], P[3];
     ocrt_thread_idx(p);
     ocrt_compute_thread_num(P);
@@ -62,12 +62,12 @@ inline void snblas_gemm_cluster_kernel_init_fp64(const SnblasGemmInfo info, cons
 }
 
 extern void snblas_gemm_cluster_kernel_deinit_fp64(const SnblasGemmInfo info, const SnblasGemmImpl impl);
-inline void snblas_gemm_cluster_kernel_deinit_fp64(const SnblasGemmInfo info, const SnblasGemmImpl impl) {
+inline __attribute__((always_inline)) void snblas_gemm_cluster_kernel_deinit_fp64(const SnblasGemmInfo info, const SnblasGemmImpl impl) {
     snrt_ssr_disable();
 }
 
 extern void snblas_gemm_cluster_kernel_compute_fp64(const SnblasGemmInfo info, const SnblasGemmArgs_fp64 args, const SnblasGemmImpl impl);
-inline void snblas_gemm_cluster_kernel_compute_fp64(const SnblasGemmInfo info, const SnblasGemmArgs_fp64 args, const SnblasGemmImpl impl) {
+inline __attribute__((always_inline)) void snblas_gemm_cluster_kernel_compute_fp64(const SnblasGemmInfo info, const SnblasGemmArgs_fp64 args, const SnblasGemmImpl impl) {
     uint32_t p[3], P[3];
     ocrt_thread_idx(p);
     ocrt_compute_thread_num(P);
@@ -153,7 +153,7 @@ inline void snblas_gemm_cluster_kernel_compute_fp64(const SnblasGemmInfo info, c
  * Use the `init`, `compute` and `deinit` directly to get maximum performance when running multiple times.
 */
 extern void snblas_gemm_cluster_kernel_fp64(const SnblasGemmInfo info, const SnblasGemmArgs_fp64 args, const SnblasGemmImpl impl);
-inline void snblas_gemm_cluster_kernel_fp64(const SnblasGemmInfo info, const SnblasGemmArgs_fp64 args, const SnblasGemmImpl impl) {
+inline __attribute__((always_inline)) void snblas_gemm_cluster_kernel_fp64(const SnblasGemmInfo info, const SnblasGemmArgs_fp64 args, const SnblasGemmImpl impl) {
     snblas_gemm_cluster_kernel_init_fp64(info, impl);
     snblas_gemm_cluster_kernel_compute_fp64(info, args, impl);
     snblas_gemm_cluster_kernel_deinit_fp64(info, impl);
