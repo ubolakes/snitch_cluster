@@ -59,7 +59,12 @@ void SNBLAS_GEMM_TILING(streambuffer, FLOAT_T, IS_DM_CORE, BETA_NZ) (const Snbla
     int ib, jb, kb;
     int ib_prev = -1, jb_prev = -1, kb_prev = -1;
 
-    bool storeC = false;
+    // quad split dma load, dma two steps ahead
+    uint32_t isb = 0;
+    uint32_t jsb = 0;
+    const uint32_t ksb = 0;
+    
+    bool loadC = true, storeC = false;
 
     GemmInfo tileInfo = {0};
     tileInfo.M   = L1_M / 2;
@@ -91,20 +96,32 @@ void SNBLAS_GEMM_TILING(streambuffer, FLOAT_T, IS_DM_CORE, BETA_NZ) (const Snbla
             if (IS_DM_CORE) {
                 dump_ib(ib);
                 dump_jb(jb);
-                (*load_tile_C)(l1->C, (void*) C, ib, jb, L1_M, L1_N, ldc, FP64);
-                if (ib_prev >= 0 && jb_prev >= 0) storeC = true; // store after k-accumulation is complete
+                loadC = true;
+                storeC = (ib_prev >= 0 && jb_prev >= 0); // store after k-accumulation is complete
             }
 
             for(kb = 0; kb < K / L1_K; kb++) {
+                isb = 0;
+                jsb = 0;
 
-                // quad split dma load, dma two steps ahead
-                uint32_t isb = 0;
-                uint32_t jsb = 0;
-                const uint32_t ksb = 0;
                 // load    b0
                 // compute (0,0)
                 if (IS_DM_CORE) {
                     dump_kb(kb);
+                    
+                    if (storeC)
+                        snrt_dma_load_2d_tile_to_tile(C, l1->C,
+                                                        isb,jsb,
+                                                        2*ib_prev+isb, 2*jb_prev+jsb,
+                                                        tileInfo.M, tileInfo.N, 
+                                                        ldc, tileInfo.ldc, FP64);
+                    if (loadC)
+                        snrt_dma_load_2d_tile_to_tile(l1->C, C,
+                                                        2*ib+isb, 2*jb+jsb,
+                                                        isb, jsb,
+                                                        tileInfo.M, tileInfo.N, 
+                                                        tileInfo.ldc, ldc, FP64);
+
                     snrt_dma_load_2d_tile_to_tile(l1->B, (void*) B,
                                                 info.tb ? 2*jb+jsb : kb+ksb, 
                                                 info.tb ? kb+ksb : 2*jb+jsb, 
@@ -113,10 +130,12 @@ void SNBLAS_GEMM_TILING(streambuffer, FLOAT_T, IS_DM_CORE, BETA_NZ) (const Snbla
                                                 info.tb ? tileInfo.N : tileInfo.K,  
                                                 info.tb ? tileInfo.K : tileInfo.N, 
                                                 tileInfo.ldb, ldb, FP64);
+                    
                     snrt_dma_wait_all();
                     snrt_cluster_hw_barrier();
                     if (impl.bench) snrt_mcycle();
                 } else {
+                    // if (p[0] == 1) dump_jb(isb);
 
                     GemmArgs tileArgs = {0};
                     tileArgs.A     = l1->A + isb * tileInfo.M * tileInfo.lda + ksb * tileInfo.K;
@@ -132,7 +151,20 @@ void SNBLAS_GEMM_TILING(streambuffer, FLOAT_T, IS_DM_CORE, BETA_NZ) (const Snbla
                 jsb = 1;
                 // compute (0,1)
                 // load    a0
-                if (IS_DM_CORE) {
+                if (IS_DM_CORE) {                    
+                    if (storeC)
+                        snrt_dma_load_2d_tile_to_tile(C, l1->C,
+                                                        isb,jsb,
+                                                        2*ib_prev+isb, 2*jb_prev+jsb,
+                                                        tileInfo.M, tileInfo.N, 
+                                                        ldc, tileInfo.ldc, FP64);
+                    if (loadC)
+                        snrt_dma_load_2d_tile_to_tile(l1->C, C,
+                                                        2*ib+isb, 2*jb+jsb,
+                                                        isb, jsb,
+                                                        tileInfo.M, tileInfo.N, 
+                                                        tileInfo.ldc, ldc, FP64);
+
                     snrt_dma_load_2d_tile_to_tile(l1->A, (void*) A,
                                                 info.ta ? kb+ksb : 2*ib+isb, 
                                                 info.ta ? 2*ib+isb : kb+ksb, 
@@ -162,7 +194,19 @@ void SNBLAS_GEMM_TILING(streambuffer, FLOAT_T, IS_DM_CORE, BETA_NZ) (const Snbla
                 // // compute (1,1)
                 // // load    b1
                 if (IS_DM_CORE) {
-                    dump_kb(kb);
+                    if (storeC)
+                        snrt_dma_load_2d_tile_to_tile(C, l1->C,
+                                                        isb,jsb,
+                                                        2*ib_prev+isb, 2*jb_prev+jsb,
+                                                        tileInfo.M, tileInfo.N, 
+                                                        ldc, tileInfo.ldc, FP64);
+                    if (loadC)
+                        snrt_dma_load_2d_tile_to_tile(l1->C, C,
+                                                        2*ib+isb, 2*jb+jsb,
+                                                        isb, jsb,
+                                                        tileInfo.M, tileInfo.N, 
+                                                        tileInfo.ldc, ldc, FP64);
+
                     snrt_dma_load_2d_tile_to_tile(l1->B, (void*) B,
                                                 info.tb ? 2*jb+jsb : kb+ksb, 
                                                 info.tb ? kb+ksb : 2*jb+jsb, 
@@ -191,6 +235,19 @@ void SNBLAS_GEMM_TILING(streambuffer, FLOAT_T, IS_DM_CORE, BETA_NZ) (const Snbla
                 // // compute (1,0)
                 // // load    a1
                 if (IS_DM_CORE) {
+                    if (storeC)
+                        snrt_dma_load_2d_tile_to_tile(C, l1->C,
+                                                        isb,jsb,
+                                                        2*ib_prev+isb, 2*jb_prev+jsb,
+                                                        tileInfo.M, tileInfo.N, 
+                                                        ldc, tileInfo.ldc, FP64);
+                    if (loadC)
+                        snrt_dma_load_2d_tile_to_tile(l1->C, C,
+                                                        2*ib+isb, 2*jb+jsb,
+                                                        isb, jsb,
+                                                        tileInfo.M, tileInfo.N, 
+                                                        tileInfo.ldc, ldc, FP64);
+
                     snrt_dma_load_2d_tile_to_tile(l1->A, (void*) A,
                                                 info.ta ? kb+ksb : 2*ib+isb, 
                                                 info.ta ? 2*ib+isb : kb+ksb, 
@@ -215,16 +272,9 @@ void SNBLAS_GEMM_TILING(streambuffer, FLOAT_T, IS_DM_CORE, BETA_NZ) (const Snbla
                     SNBLAS_GEMM_CLUSTER_KERNEL_COMPUTE(FLOAT_T)(tileInfo, tileArgs, impl);
                 }
 
-                isb = 0;
+                loadC = false;
+                storeC = false;
                 
-                snrt_cluster_hw_barrier();
-
-                if (IS_DM_CORE) {
-                    if (storeC) {
-                        storeC = false;
-                        (*store_tile_C)(C, l1->C, ib_prev, jb_prev, L1_M, L1_N, ldc, FP64);
-                    }
-                }
                 kb_prev = kb;
             }
 
@@ -234,15 +284,49 @@ void SNBLAS_GEMM_TILING(streambuffer, FLOAT_T, IS_DM_CORE, BETA_NZ) (const Snbla
     }
 
     if (IS_DM_CORE) {
+        // store final tile
+        isb = 0; jsb = 0;
+        snrt_dma_load_2d_tile_to_tile(C, l1->C,
+                                        isb,jsb,
+                                        2*ib_prev+isb, 2*jb_prev+jsb,
+                                        tileInfo.M, tileInfo.N, 
+                                        ldc, tileInfo.ldc, FP64);
+        snrt_dma_wait_all();
+        snrt_cluster_hw_barrier();
+        
+        jsb = 1;
+        snrt_dma_load_2d_tile_to_tile(C, l1->C,
+                                        isb,jsb,
+                                        2*ib_prev+isb, 2*jb_prev+jsb,
+                                        tileInfo.M, tileInfo.N, 
+                                        ldc, tileInfo.ldc, FP64);
+        snrt_dma_wait_all();
         snrt_cluster_hw_barrier();
 
-        // store final tile
-        (*store_tile_C)(C, l1->C, ib_prev, jb_prev, L1_M, L1_N,
-                            ldc, FP64);
+        isb = 1;
+        snrt_dma_load_2d_tile_to_tile(C, l1->C,
+                                        isb,jsb,
+                                        2*ib_prev+isb, 2*jb_prev+jsb,
+                                        tileInfo.M, tileInfo.N, 
+                                        ldc, tileInfo.ldc, FP64);
         snrt_dma_wait_all();
+        snrt_cluster_hw_barrier();
+        
+        jsb = 0;
+        snrt_dma_load_2d_tile_to_tile(C, l1->C,
+                                        isb,jsb,
+                                        2*ib_prev+isb, 2*jb_prev+jsb,
+                                        tileInfo.M, tileInfo.N, 
+                                        ldc, tileInfo.ldc, FP64);
+        snrt_dma_wait_all();
+        snrt_cluster_hw_barrier();
+
     } else {
         snrt_fpu_fence();
         SNBLAS_GEMM_CLUSTER_KERNEL_DEINIT(FLOAT_T)(tileInfo, impl);
+        snrt_cluster_hw_barrier();
+        snrt_cluster_hw_barrier();
+        snrt_cluster_hw_barrier();
         snrt_cluster_hw_barrier();
     }
     snrt_global_barrier();

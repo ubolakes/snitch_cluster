@@ -9,8 +9,8 @@
         prec: 64,
         M: 16,
         N: 16,
-        K: 384,
-        ta: true, // false = row-major, true = col-major
+        K: 8,
+        ta: false, // false = row-major, true = col-major
         tb: false,
         tc: false, // not implemented
     }
@@ -21,12 +21,12 @@
     }
 
     gemmImpl: {
-        method: "baseline",
+        method: "streambuffer",
         use_c2c_tiles: true,
         reversing_loops: true,
         L1_M: 16,
         L1_N: 16,
-        L1_K: 128,
+        L1_K: 8,
         ta_tile: false,
         tb_tile: false,
         tc_tile: false, // not implemented
@@ -35,7 +35,7 @@
     }
     
     bench: {
-        iters: 2,
+        iters: 1,
     }
     
     datagen: {
