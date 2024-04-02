@@ -6,13 +6,17 @@
 #error "Define IS_DM_CORE to use this template."
 #endif
 
+#ifndef BETA_NZ
+#error "Define BETA_NZ to use this template."
+#endif
+
 #include "gemm_kernel.h"
 
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 
 __attribute__((flatten)) // Force inline called functions
-void SNBLAS_GEMM_TILING(1dpipe, FLOAT_T, IS_DM_CORE) (const SnblasGemmInfo info, const SNBLAS_GEMM_ARGS(FLOAT_T) args, const SnblasGemmImpl impl) {
+void SNBLAS_GEMM_TILING(1dpipe, FLOAT_T, IS_DM_CORE, BETA_NZ) (const SnblasGemmInfo info, const SNBLAS_GEMM_ARGS(FLOAT_T) args, const SnblasGemmImpl impl) {
 
     typedef SNBLAS_GEMM_TCDM(FLOAT_T) TcdmLayout;
     typedef SnblasGemmInfo GemmInfo;
@@ -90,8 +94,9 @@ void SNBLAS_GEMM_TILING(1dpipe, FLOAT_T, IS_DM_CORE) (const SnblasGemmInfo info,
     // create function ptr for dma loading
     const snrt_dma_load_2d_tile_t load_tile_A = TA_TILE ? &snrt_dma_load_2d_tile_transpose : &snrt_dma_load_2d_tile;
     const snrt_dma_load_2d_tile_t load_tile_B = TB_TILE ? &snrt_dma_load_2d_tile_transpose : &snrt_dma_load_2d_tile;
-    const snrt_dma_load_2d_tile_t load_tile_C = (args.beta == (FLOAT_T)0.0) ? &load_zero_tile : 
-                                                TC_TILE ? &snrt_dma_load_2d_tile_transpose : &snrt_dma_load_2d_tile;
+    const snrt_dma_load_2d_tile_t load_tile_C = BETA_NZ ? 
+                                                TC_TILE ? &snrt_dma_load_2d_tile_transpose : &snrt_dma_load_2d_tile
+                                                : &load_zero_tile;
     const snrt_dma_load_2d_tile_t store_tile_C = TC_TILE ? &snrt_dma_store_2d_tile_transpose : &snrt_dma_store_2d_tile;
 
     if (impl.bench) snrt_mcycle();

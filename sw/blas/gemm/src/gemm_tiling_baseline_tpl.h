@@ -6,10 +6,14 @@
 #error "Define IS_DM_CORE to use this template."
 #endif
 
+#ifndef BETA_NZ
+#error "Define BETA_NZ to use this template."
+#endif
+
 #include "gemm_kernel.h"
 
 __attribute__((flatten)) // Force inline called functions
-void SNBLAS_GEMM_TILING(baseline, FLOAT_T, IS_DM_CORE) (const SnblasGemmInfo info, const SNBLAS_GEMM_ARGS(FLOAT_T) args, const SnblasGemmImpl impl) {
+void SNBLAS_GEMM_TILING(baseline, FLOAT_T, IS_DM_CORE, BETA_NZ) (const SnblasGemmInfo info, const SNBLAS_GEMM_ARGS(FLOAT_T) args, const SnblasGemmImpl impl) {
     
     /**
      * Problem is double buffered in L1. The buffer that is used is toggled at
@@ -76,8 +80,9 @@ void SNBLAS_GEMM_TILING(baseline, FLOAT_T, IS_DM_CORE) (const SnblasGemmInfo inf
     // create function ptr for dma loading
     const snrt_dma_load_2d_tile_t load_tile_A = TA_TILE ? &snrt_dma_load_2d_tile_transpose : &snrt_dma_load_2d_tile;
     const snrt_dma_load_2d_tile_t load_tile_B = TB_TILE ? &snrt_dma_load_2d_tile_transpose : &snrt_dma_load_2d_tile;
-    const snrt_dma_load_2d_tile_t load_tile_C = (args.beta == (FLOAT_T)0.0) ? &load_zero_tile : 
-                                                TC_TILE ? &snrt_dma_load_2d_tile_transpose : &snrt_dma_load_2d_tile;
+    const snrt_dma_load_2d_tile_t load_tile_C = BETA_NZ ? 
+                                                TC_TILE ? &snrt_dma_load_2d_tile_transpose : &snrt_dma_load_2d_tile
+                                                : &load_zero_tile;
     const snrt_dma_load_2d_tile_t store_tile_C = TC_TILE ? &snrt_dma_store_2d_tile_transpose : &snrt_dma_store_2d_tile;
 
     if (!IS_DM_CORE) {
@@ -125,12 +130,9 @@ void SNBLAS_GEMM_TILING(baseline, FLOAT_T, IS_DM_CORE) (const SnblasGemmInfo inf
                     tileArgs.alpha = alpha;
                     tileArgs.beta  = 1; // always accumulate partial result, args.beta already applied by dma
                         
+                    // hw barrier in kernel
                     SNBLAS_GEMM_CLUSTER_KERNEL_COMPUTE(FLOAT_T)(tileInfo, tileArgs, impl);
                 }
-                
-                // if (impl.bench) snrt_mcycle();
-                // TODO: distinguish for compute and dma core, compute cores do indexing first and then barrier, better use of waiting time
-                //       no need for extra barrier to offset dma cores
 
                 if (IS_DM_CORE) {
                     if (storeC) {

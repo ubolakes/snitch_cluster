@@ -17,8 +17,10 @@ NAMED_DUMP(double, c, 0xc)
 #define STR(A) STR_IMPL(A)
 #define CONCAT_IMPL(a,b) a ## b
 #define CONCAT(a,b) CONCAT_IMPL(a,b)
-#define CONCAT3(a,b,c) CONCAT(a,CONCAT(b,c))
-#define CONCAT4(a,b,c,d) CONCAT3(a,b,CONCAT(c,d))
+#define CONCAT3(a,b,c) CONCAT(CONCAT(a,b),c)
+#define CONCAT4(a,b,c,d) CONCAT3(CONCAT(a,b),c,d)
+#define CONCAT5(a,b,c,d,e) CONCAT4(CONCAT(a,b),c,d,e)
+#define CONCAT6(a,b,c,d,e,f) CONCAT5(CONCAT(a,b),c,d,e,f)
 
 #ifndef PRECISION_T
 #define PRECISION_T
