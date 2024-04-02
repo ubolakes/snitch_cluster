@@ -67,7 +67,7 @@ inline __attribute__((always_inline)) void snblas_gemm_cluster_kernel_deinit_fp6
 }
 
 extern void snblas_gemm_cluster_kernel_compute_fp64(const SnblasGemmInfo info, const SnblasGemmArgs_fp64 args, const SnblasGemmImpl impl);
-inline __attribute__((always_inline)) void snblas_gemm_cluster_kernel_compute_fp64(const SnblasGemmInfo info, const SnblasGemmArgs_fp64 args, const SnblasGemmImpl impl) {
+inline __attribute__((always_inline)) __attribute__((flatten)) void snblas_gemm_cluster_kernel_compute_fp64(const SnblasGemmInfo info, const SnblasGemmArgs_fp64 args, const SnblasGemmImpl impl) {
     uint32_t p[3], P[3];
     ocrt_thread_idx(p);
     ocrt_compute_thread_num(P);
@@ -91,8 +91,13 @@ inline __attribute__((always_inline)) void snblas_gemm_cluster_kernel_compute_fp
     // Unroll by at least fmadd.d latency to fill pipeline
     // Additional unrolling reduces indexing overhead but needs available registers
     const uint32_t unroll = FMADD_D_UNROLL;
+    
+    snrt_fpu_fence(); // wait for previous fpu instructions to finish
+    snrt_cluster_hw_barrier(); 
+    if (impl.bench) snrt_mcycle();
 
     // SSR start address need to be configured each time
+    // note: will start buffering elements into the fifo immediately, must be valid already
     snrt_ssr_read(SNRT_SSR_DM0, SNRT_SSR_4D, (void*) A);
     snrt_ssr_read(SNRT_SSR_DM1, SNRT_SSR_4D, (void*) B);
 
@@ -144,8 +149,6 @@ inline __attribute__((always_inline)) void snblas_gemm_cluster_kernel_compute_fp
         }
     }
 
-    snrt_fpu_fence();
-    if (impl.bench) snrt_mcycle();
 }
 
 /**

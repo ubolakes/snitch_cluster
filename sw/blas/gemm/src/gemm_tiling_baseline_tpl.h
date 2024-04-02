@@ -53,7 +53,7 @@ void SNBLAS_GEMM_TILING(baseline, FLOAT_T, IS_DM_CORE) (const SnblasGemmInfo inf
     bool l1Id_C = false;
 
     // Initialize indices
-    const uint32_t PI = 2, PJ = 2;
+    const uint32_t PI = 1, PJ = 1;
     const uint32_t pi = p[1] / PJ;
     const uint32_t pj = p[1] % PJ;
 
@@ -82,7 +82,7 @@ void SNBLAS_GEMM_TILING(baseline, FLOAT_T, IS_DM_CORE) (const SnblasGemmInfo inf
 
     if (!IS_DM_CORE) {
         SNBLAS_GEMM_CLUSTER_KERNEL_INIT(FLOAT_T)(tileInfo, impl);
-        snrt_cluster_hw_barrier();  // DMA core is one index ahead
+        if (impl.bench) snrt_mcycle();
     }
 
     for(ib = pi; ib <  M / L1_M; ib += PI) {
@@ -115,20 +115,22 @@ void SNBLAS_GEMM_TILING(baseline, FLOAT_T, IS_DM_CORE) (const SnblasGemmInfo inf
                                                     info.tb ? L1_N : L1_K, 
                                                     info.tb ? L1_K : L1_N, ldb, FP64);
                     snrt_dma_wait_all();
+                    snrt_cluster_hw_barrier();
+                    if (impl.bench) snrt_mcycle();
                 } else {
                     GemmArgs tileArgs = {0};
                     tileArgs.A     = l1_A;
                     tileArgs.B     = l1_B;
                     tileArgs.C     = l1_C;
                     tileArgs.alpha = alpha;
-                    tileArgs.beta  = 1; // accumulate partial result, args.beta already applied by dma
-                    
+                    tileArgs.beta  = 1; // always accumulate partial result, args.beta already applied by dma
+                        
                     SNBLAS_GEMM_CLUSTER_KERNEL_COMPUTE(FLOAT_T)(tileInfo, tileArgs, impl);
                 }
                 
                 // if (impl.bench) snrt_mcycle();
-                snrt_cluster_hw_barrier();
-                if (impl.bench) snrt_mcycle();
+                // TODO: distinguish for compute and dma core, compute cores do indexing first and then barrier, better use of waiting time
+                //       no need for extra barrier to offset dma cores
 
                 if (IS_DM_CORE) {
                     if (storeC) {
@@ -147,7 +149,7 @@ void SNBLAS_GEMM_TILING(baseline, FLOAT_T, IS_DM_CORE) (const SnblasGemmInfo inf
     }
 
     if (IS_DM_CORE) {
-        snrt_cluster_hw_barrier();  // DMA core is one index ahead
+        snrt_cluster_hw_barrier();
 
         // store final tile
         // if (ib_prev >= 0 && jb_prev >= 0) {
@@ -156,8 +158,10 @@ void SNBLAS_GEMM_TILING(baseline, FLOAT_T, IS_DM_CORE) (const SnblasGemmInfo inf
             snrt_dma_wait_all();
         // }
     } else {
+        snrt_fpu_fence();
         SNBLAS_GEMM_CLUSTER_KERNEL_DEINIT(FLOAT_T)(tileInfo, impl);
+        snrt_cluster_hw_barrier();
     }
-
-    if (impl.bench) snrt_mcycle();
+    snrt_fpu_fence();
+    snrt_global_barrier();
 }
