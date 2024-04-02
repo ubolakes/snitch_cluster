@@ -16,6 +16,7 @@
 
 #include "gemm.h"
 #include "dma_xfer_test.h"
+#include "dma_tile2tile_test.h"
 
 #include "dump.h"
 NAMED_DUMP(uint32_t, err, 0x7)
@@ -55,6 +56,7 @@ int main() {
         // if (i == 1) snrt_mcycle(); // start
         gemmImpl.bench = i == 1;
         SNBLAS_GEMM(USE_METHOD, DTYPE)(gemmInfo, gemmArgs, gemmImpl);
+        // dma_tile2tile_test(gemmInfo, gemmArgs, gemmImpl);
         // dma_xfer_test(c, M*N, i == 1);
 
         if (snrt_global_core_idx() == 0)

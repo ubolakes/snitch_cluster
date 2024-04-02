@@ -132,7 +132,7 @@ inline __attribute__((always_inline)) snrt_dma_txid_t snrt_dma_start_2d_wideptr(
 }
 
 /// Initiate an asynchronous 2D DMA transfer.
-inline snrt_dma_txid_t snrt_dma_start_2d(void *dst, const void *src,
+inline __attribute__((always_inline)) snrt_dma_txid_t snrt_dma_start_2d(void *dst, const void *src,
                                          size_t size, size_t dst_stride,
                                          size_t src_stride, size_t repeat) {
     return snrt_dma_start_2d_wideptr((size_t)dst, (size_t)src, size, dst_stride,
@@ -215,21 +215,44 @@ inline void snrt_dma_memset(void *ptr, uint8_t value, uint32_t len) {
 /// by the (tile_x1_idx, tile_x0_idx) tuple. Every element in the src and
 /// destination arrays has prec bytes.
 inline __attribute__((always_inline)) snrt_dma_txid_t snrt_dma_load_2d_tile(
-    void *dst, void *src, size_t tile_x1_idx, size_t tile_x0_idx,
-    size_t tile_x1_size, size_t tile_x0_size, size_t full_x0_size,
+    void *dst, void *src, size_t tile_j_idx, size_t tile_i_idx,
+    size_t tile_n, size_t tile_m, size_t full_m,
     uint32_t prec) {
     size_t src_offset = 0;
     // Advance src array in x0 and x1 dimensions, and convert to byte offset
-    src_offset += tile_x0_idx * tile_x0_size;
-    src_offset += tile_x1_idx * tile_x1_size * full_x0_size;
+    src_offset += tile_i_idx * tile_m;
+    src_offset += tile_j_idx * tile_n * full_m;
     src_offset *= prec;
     // Initiate transfer
     return snrt_dma_start_2d(dst,                  // dst
                              src + src_offset,     // src
-                             tile_x0_size * prec,  // size
-                             tile_x0_size * prec,  // dst_stride
-                             full_x0_size * prec,  // src_stride
-                             tile_x1_size          // repeat
+                             tile_m * prec,  // size
+                             tile_m * prec,  // dst_stride
+                             full_m * prec,  // src_stride
+                             tile_n          // repeat
+    );
+}
+
+inline __attribute__((always_inline)) snrt_dma_txid_t snrt_dma_load_2d_tile_to_tile(
+    void *dst, void *src, 
+    size_t src_tile_i, size_t src_tile_j, 
+    size_t dst_tile_i, size_t dst_tile_j, 
+    size_t tile_m, size_t tile_n, 
+    size_t src_lda, size_t dst_lda,
+    uint32_t prec) {
+    size_t src_offset = 
+        src_tile_i * tile_m * src_lda + 
+        src_tile_j * tile_n;
+    size_t dst_offset = 
+        dst_tile_i * tile_m * dst_lda + 
+        dst_tile_j * tile_n;
+    // Initiate transfer
+    return snrt_dma_start_2d(dst + dst_offset * prec,     // dst
+                             src + src_offset * prec,     // src
+                             tile_m * prec,        // size
+                             dst_lda * prec,       // dst_stride
+                             src_lda * prec,       // src_stride
+                             tile_n                // repeat
     );
 }
 
