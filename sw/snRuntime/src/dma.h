@@ -238,7 +238,7 @@ inline __attribute__((always_inline)) snrt_dma_txid_t snrt_dma_load_2d_tile_to_t
     size_t src_tile_i, size_t src_tile_j, 
     size_t dst_tile_i, size_t dst_tile_j, 
     size_t tile_m, size_t tile_n, 
-    size_t src_lda, size_t dst_lda,
+    size_t dst_lda, size_t src_lda,
     uint32_t prec) {
     size_t src_offset = 
         src_tile_i * tile_m * src_lda + 
@@ -249,10 +249,10 @@ inline __attribute__((always_inline)) snrt_dma_txid_t snrt_dma_load_2d_tile_to_t
     // Initiate transfer
     return snrt_dma_start_2d(dst + dst_offset * prec,     // dst
                              src + src_offset * prec,     // src
-                             tile_m * prec,        // size
+                             tile_n * prec,        // size
                              dst_lda * prec,       // dst_stride
                              src_lda * prec,       // src_stride
-                             tile_n                // repeat
+                             tile_m                // repeat
     );
 }
 
