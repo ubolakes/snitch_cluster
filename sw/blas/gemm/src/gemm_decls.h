@@ -81,16 +81,14 @@ typedef struct {
 #include "gemm_decls_tpl.h"
 #undef FLOAT_T
 
+#if REVERSING_LOOPS
 /**
  * \brief Implements a reversing loop for an index range
  * \param begin Beginning of the range
  * \param end End of the range
  * \param dir Sets the direction of traversal. True: loop starts at begin.
- * \param i_prev Set the previous index to the first index, must update this
- * manually at the end of the loop. \details i_end_floor will contain the exact
- * end with the stride, s.t. the reversed loop starts at the correct index.
  */
-#define FOR_EACH(i, begin, end, stride, dir, i_prev)                     \
+#define FOR_EACH(i, begin, end, stride, dir)                             \
     dir = !dir;                                                          \
     const int i##_end_floor =                                            \
         ((end - begin + stride - 1) / stride) * stride - stride + begin; \
@@ -100,6 +98,12 @@ typedef struct {
     for (; dir ? i <= i##_last : i >= i##_last;                          \
     i = dir ? i + stride : i - stride)
 
+#else
+
+#define FOR_EACH(i, begin, end, stride, dir) \
+    for (i = begin; i <= end; i += stride)
+
+#endif
 
 // -- Function pointer typedefs
 typedef snrt_dma_txid_t (*snrt_dma_load_2d_tile_t)(void *, void *, size_t, size_t, size_t, size_t, size_t, uint32_t);

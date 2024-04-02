@@ -7,9 +7,9 @@
 {
     gemmInfo: {
         prec: 64,
-        M: 192,
+        M: 16,
         N: 16,
-        K: 16,
+        K: 384,
         ta: true, // false = row-major, true = col-major
         tb: false,
         tc: false, // not implemented
@@ -21,11 +21,12 @@
     }
 
     gemmImpl: {
-        method: "2dpipe",
+        method: "baseline",
         use_c2c_tiles: true,
+        reversing_loops: true,
         L1_M: 16,
         L1_N: 16,
-        L1_K: 192,
+        L1_K: 128,
         ta_tile: false,
         tb_tile: false,
         tc_tile: false, // not implemented

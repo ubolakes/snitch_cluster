@@ -57,11 +57,11 @@ int main() {
         SNBLAS_GEMM(USE_METHOD, DTYPE)(gemmInfo, gemmArgs, gemmImpl);
         // dma_xfer_test(c, M*N, i == 1);
 
-        if (i == 1) snrt_mcycle(); // end
         if (snrt_global_core_idx() == 0)
             dump_bench_iter(-i);
         snrt_fpu_fence();
         snrt_global_barrier();
+        if (i == 1) snrt_mcycle(); // end
     }
 
 #ifdef BIST_COMPUTE

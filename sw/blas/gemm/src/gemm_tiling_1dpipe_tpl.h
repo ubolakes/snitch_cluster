@@ -105,8 +105,8 @@ void SNBLAS_GEMM_TILING(1dpipe, FLOAT_T, IS_DM_CORE) (const SnblasGemmInfo info,
         if (impl.bench) snrt_mcycle();
     }
 
-    FOR_EACH(ib, pi, M / L1_M, PI, ib_dir, ib_prev) {
-        FOR_EACH(jb, pj, N / L1_N, PJ, jb_dir, jb_prev) {
+    FOR_EACH(ib, pi, M / L1_M, PI, ib_dir) {
+        FOR_EACH(jb, pj, N / L1_N, PJ, jb_dir) {
             FLOAT_T* const l1_C = l1[l1Id_C].C;
 
             if (IS_DM_CORE) {
@@ -116,7 +116,7 @@ void SNBLAS_GEMM_TILING(1dpipe, FLOAT_T, IS_DM_CORE) (const SnblasGemmInfo info,
                 if (ib_prev >= 0 /* && jb_prev >= 0 */) storeC = true;
             }
 
-            FOR_EACH(kb, 0, K / L1_K, 1, kb_dir, kb_prev) {
+            FOR_EACH(kb, 0, K / L1_K, 1, kb_dir) {
 
                 // Only load if the indices have changed, otherwise data is already loaded
                 const bool loadA = ib != ib_prev || kb != kb_prev;

@@ -123,6 +123,7 @@ def emit_header(**kwargs):
     data_str += ["// -- gemmImpl"]
     data_str += [f"#define USE_METHOD {gemmImpl['method']}"]
     data_str += [f"#define USE_C2C_TILES {int(gemmImpl['use_c2c_tiles'])}"]
+    data_str += [f"#define REVERSING_LOOPS {int(gemmImpl['reversing_loops'])}"]
     data_str += [f"#define L1_M {gemmImpl['L1_M']}"]
     data_str += [f"#define L1_N {gemmImpl['L1_N']}"]
     data_str += [f"#define L1_K {gemmImpl['L1_K']}"]
