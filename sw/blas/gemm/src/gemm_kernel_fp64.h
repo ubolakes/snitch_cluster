@@ -94,6 +94,7 @@ inline __attribute__((always_inline)) __attribute__((flatten)) void snblas_gemm_
     
     snrt_fpu_fence(); // wait for previous fpu instructions to finish
     snrt_cluster_hw_barrier(); 
+    // snrt_global_barrier();
     if (impl.bench) snrt_mcycle();
 
     // SSR start address need to be configured each time

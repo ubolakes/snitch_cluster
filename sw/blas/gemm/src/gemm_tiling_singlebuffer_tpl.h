@@ -81,8 +81,8 @@ void SNBLAS_GEMM_TILING(singlebuffer, FLOAT_T, IS_DM_CORE, BETA_NZ) (const Snbla
     
     if (!IS_DM_CORE) {
         SNBLAS_GEMM_CLUSTER_KERNEL_INIT(FLOAT_T)(tileInfo, impl);
+        if (impl.bench) snrt_mcycle();
     }
-    if (impl.bench) snrt_mcycle();
 
     for(ib = pi; ib <  M / L1_M; ib += PI) {
         for(jb = pj; jb < N / L1_N; jb += PJ) {
@@ -116,8 +116,8 @@ void SNBLAS_GEMM_TILING(singlebuffer, FLOAT_T, IS_DM_CORE, BETA_NZ) (const Snbla
                     tileArgs.alpha = alpha;
                     tileArgs.beta  = 1; // always accumulate partial result, args.beta already applied by dma
                     
-                    snrt_cluster_hw_barrier(); 
                     SNBLAS_GEMM_CLUSTER_KERNEL_COMPUTE(FLOAT_T)(tileInfo, tileArgs, impl);
+                    snrt_fpu_fence();
                     snrt_cluster_hw_barrier(); 
                 }
                 

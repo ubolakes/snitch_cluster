@@ -164,6 +164,5 @@ void SNBLAS_GEMM_TILING(baseline, FLOAT_T, IS_DM_CORE, BETA_NZ) (const SnblasGem
         SNBLAS_GEMM_CLUSTER_KERNEL_DEINIT(FLOAT_T)(tileInfo, impl);
         snrt_cluster_hw_barrier();
     }
-    snrt_fpu_fence();
     snrt_global_barrier();
 }

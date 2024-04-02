@@ -153,6 +153,7 @@ void SNBLAS_GEMM_TILING(1dpipe, FLOAT_T, IS_DM_CORE, BETA_NZ) (const SnblasGemmI
                     }
 
                     snrt_dma_wait_all();
+                    snrt_global_barrier();
                     if (impl.bench) snrt_mcycle();
                 } else {
                     GemmArgs tileArgs = {0};
@@ -164,9 +165,6 @@ void SNBLAS_GEMM_TILING(1dpipe, FLOAT_T, IS_DM_CORE, BETA_NZ) (const SnblasGemmI
                     
                     SNBLAS_GEMM_CLUSTER_KERNEL_COMPUTE(FLOAT_T)(tileInfo, tileArgs, impl);
                 }
-                
-                snrt_global_barrier();
-                if (impl.bench) snrt_mcycle();
 
                 if (IS_DM_CORE) {
                     if (storeC) {
