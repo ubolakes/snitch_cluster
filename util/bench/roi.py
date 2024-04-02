@@ -56,14 +56,17 @@ def filter_and_label_rois(data, spec):
         thread_idx = int(thread_idx)
         thread_data = data[thread]
         
+        input_rois = get_rois(thread_data, thread_type)
         output_rois = []
         # Iterate all ROIs to keep for the current thread
         if thread_spec['roi'] == '*':
-            for i in get_rois(thread_data, thread_type):
+            for i in input_rois:
                 output_rois.append(format_roi(i, thread))
         else:
             for roi in thread_spec['roi']:
-                output_roi = format_roi(get_rois(thread_data, thread_type)[roi['idx']], roi['label'])
+                # if roi['idx'] not in input_rois:
+                #     continue
+                output_roi = format_roi(input_rois[roi['idx']], roi['label'])
                 output_rois.append(output_roi)
         # Add ROIs for current thread to output, if any
         if output_rois:

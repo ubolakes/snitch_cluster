@@ -91,7 +91,7 @@ def main():
                 'ph': "X",  # Complete event type
                 'ts': us(ts),
                 'dur': us(dur),
-                'pid': 1 if thread_type == 'dma' else 0,
+                'pid': 1 if thread_type == 'dma' else 1,
                 'tid': int(thread_idx) -1,
                 'args': region['attrs']
             }

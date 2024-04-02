@@ -816,7 +816,7 @@ module snitch_cc #(
   int f;
   string fn;
   logic [63:0] cycle = 0;
-  int log_enabled = 0;
+  int log_enabled = 1;
   initial begin
     // We need to schedule the assignment into a safe region, otherwise
     // `hart_id_i` won't have a value assigned at the beginning of the first
@@ -906,7 +906,7 @@ module snitch_cc #(
               snitch_pkg::print_snitch_trace(extras_snitch));
           $fwrite(f, trace_entry);
           if (i_snitch.wfi_d) begin // Disable log at the end
-            log_enabled = 0;
+            // log_enabled = 0;
           end
         end
       end

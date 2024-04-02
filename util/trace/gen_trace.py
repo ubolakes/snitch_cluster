@@ -414,7 +414,7 @@ def flt_lit(num: int, fmt: int, width: int = 7) -> str:
 # is the size of the transaction known, completing the transaction. At that point, a new
 # incomplete transaction is created, inheriting the configuration settings from the previous
 # transaction, which may or may not be overriden before the next DMCPY*.
-def update_dma(insn, extras, dma_trans):
+def update_dma(insn, extras, time, dma_trans):
     # Extract instruction mnemonic from full instruction decoding (includes operand registers)
     MNEMONIC_REGEX = r'^([\w.]+)\s'
     match = re.match(MNEMONIC_REGEX, insn)
@@ -430,6 +430,8 @@ def update_dma(insn, extras, dma_trans):
             dma_trans.append(dma_trans[-1].copy())
             # Set size of the transaction
             dma_trans[-2]['size'] = extras['opa']
+            dma_trans[-2]['n_bytes'] = dma_trans[-2]['rep'] * dma_trans[-2]['size']
+            dma_trans[-2]['tstart'] = time
             # Override repetition count if the transaction is configured to be 1D
             config = extras['rs2']
             enable_2d = (config & 2) >> 1
@@ -449,6 +451,10 @@ def eval_dma_metrics(dma_trans, dma_trace):
             # Iterate lines in DMA trace
             for line in f.readlines():
                 dma = ast.literal_eval(line)
+                # continue
+                # if dma['time'] < dma_trans[0]['tstart']:
+                #     continue
+                
                 if 'backend_burst_req_valid' in dma:
                     # When the first burst in a transfer is granted, we record a new transfer in
                     # the outstanding transfers queue, with the information obtained from the core
@@ -458,14 +464,19 @@ def eval_dma_metrics(dma_trans, dma_trace):
                     # to pre-compute from the core trace as it depends on address alignments, etc.)
                     if dma['backend_burst_req_valid'] and dma['backend_burst_req_ready']:
                         if req_bytes == 0:
-                            n_bytes = dma_trans[req_transfer_idx]['rep'] * \
-                                    dma_trans[req_transfer_idx]['size']
+                            n_bytes = dma_trans[req_transfer_idx]['n_bytes']
                             outst_transfers.append({'tstart': dma['time'],
                                                     'exp_bursts': 0,
                                                     'rec_bursts': 0,
                                                     'bytes': n_bytes})
+                        elif len(outst_transfers) == 0:
+                            continue
                         req_bytes += dma['backend_burst_req_num_bytes']
                         outst_transfers[-1]['exp_bursts'] += 1
+                    
+                    if len(outst_transfers) == 0:
+                        continue
+
                     # We move on to the next transfer when the bytes requested by the previous
                     # bursts match the current transfer size.
                     if req_bytes == outst_transfers[-1]['bytes']:
@@ -796,7 +807,7 @@ def annotate_insn(
                 insn, pc_str = ('', '')
             else:
                 perf_metrics[-1]['snitch_issues'] += 1
-            update_dma(insn, extras, dma_trans)
+            update_dma(insn, extras, time_info[1], dma_trans)
         # Annotate sequencer
         elif extras['source'] == TRACE_SRCES['sequencer']:
             if extras['cbuf_push']:
