@@ -60,8 +60,8 @@ void SNBLAS_GEMM_TILING(streambuffer, FLOAT_T, IS_DM_CORE, BETA_NZ) (const Snbla
     int ib_prev = -1, jb_prev = -1, kb_prev = -1;
 
     // quad split dma load, dma two steps ahead
-    uint32_t isb = 0;
-    uint32_t jsb = 0;
+    uint32_t isb = 0, jsb = 0;
+    uint32_t isb_dma = 0, jsb_dma = 0;
     const uint32_t ksb = 0;
     
     bool loadC = true, storeC = false;
@@ -101,10 +101,10 @@ void SNBLAS_GEMM_TILING(streambuffer, FLOAT_T, IS_DM_CORE, BETA_NZ) (const Snbla
             }
 
             for(kb = 0; kb < K / L1_K; kb++) {
-                isb = 0;
-                jsb = 0;
+                isb = 0; jsb = 0;
+                isb_dma = 0; jsb_dma = 0;
 
-                // load    b0
+                // load    a0
                 // compute (0,0)
                 if (IS_DM_CORE) {
                     dump_kb(kb);
@@ -122,14 +122,14 @@ void SNBLAS_GEMM_TILING(streambuffer, FLOAT_T, IS_DM_CORE, BETA_NZ) (const Snbla
                                                         tileInfo.M, tileInfo.N, 
                                                         tileInfo.ldc, ldc, FP64);
 
-                    snrt_dma_load_2d_tile_to_tile(l1->B, (void*) B,
-                                                info.tb ? 2*jb+jsb : kb+ksb, 
-                                                info.tb ? kb+ksb : 2*jb+jsb, 
-                                                tileInfo.tb ? jsb : ksb,
-                                                tileInfo.tb ? ksb : jsb, 
-                                                info.tb ? tileInfo.N : tileInfo.K,  
-                                                info.tb ? tileInfo.K : tileInfo.N, 
-                                                tileInfo.ldb, ldb, FP64);
+                    snrt_dma_load_2d_tile_to_tile(l1->A, (void*) A,
+                                                info.ta ? kb+ksb : 2*ib+isb_dma, 
+                                                info.ta ? 2*ib+isb_dma : kb+ksb, 
+                                                tileInfo.tb ? ksb : isb_dma, 
+                                                tileInfo.tb ? isb_dma : ksb, 
+                                                info.ta ? tileInfo.K : tileInfo.M, 
+                                                info.ta ? tileInfo.M : tileInfo.K, 
+                                                tileInfo.lda, lda, FP64);
                     
                     snrt_dma_wait_all();
                     snrt_cluster_hw_barrier();
@@ -143,14 +143,14 @@ void SNBLAS_GEMM_TILING(streambuffer, FLOAT_T, IS_DM_CORE, BETA_NZ) (const Snbla
                     tileArgs.C     = l1->C + isb * tileInfo.M * tileInfo.ldc + jsb * tileInfo.N;
                     tileArgs.alpha = alpha;
                     tileArgs.beta  = 1;
-                        
+                    
                     // hw barrier in kernel
                     SNBLAS_GEMM_CLUSTER_KERNEL_COMPUTE(FLOAT_T)(tileInfo, tileArgs, impl);
                 }
 
-                jsb = 1;
+                isb = 0; jsb = 1;
+                // load    b0
                 // compute (0,1)
-                // load    a0
                 if (IS_DM_CORE) {                    
                     if (storeC)
                         snrt_dma_load_2d_tile_to_tile(C, l1->C,
@@ -165,14 +165,14 @@ void SNBLAS_GEMM_TILING(streambuffer, FLOAT_T, IS_DM_CORE, BETA_NZ) (const Snbla
                                                         tileInfo.M, tileInfo.N, 
                                                         tileInfo.ldc, ldc, FP64);
 
-                    snrt_dma_load_2d_tile_to_tile(l1->A, (void*) A,
-                                                info.ta ? kb+ksb : 2*ib+isb, 
-                                                info.ta ? 2*ib+isb : kb+ksb, 
-                                                tileInfo.tb ? ksb : isb, 
-                                                tileInfo.tb ? isb : ksb, 
-                                                info.ta ? tileInfo.K : tileInfo.M, 
-                                                info.ta ? tileInfo.M : tileInfo.K, 
-                                                tileInfo.lda, lda, FP64);
+                    snrt_dma_load_2d_tile_to_tile(l1->B, (void*) B,
+                                                info.tb ? 2*jb+jsb_dma : kb+ksb, 
+                                                info.tb ? kb+ksb : 2*jb+jsb_dma, 
+                                                tileInfo.tb ? jsb_dma : ksb,
+                                                tileInfo.tb ? ksb : jsb_dma, 
+                                                info.tb ? tileInfo.N : tileInfo.K,  
+                                                info.tb ? tileInfo.K : tileInfo.N, 
+                                                tileInfo.ldb, ldb, FP64);
 
                     snrt_dma_wait_all();
                     snrt_cluster_hw_barrier();
@@ -190,9 +190,10 @@ void SNBLAS_GEMM_TILING(streambuffer, FLOAT_T, IS_DM_CORE, BETA_NZ) (const Snbla
                 }
 
 
-                isb = 1;
-                // // compute (1,1)
+                isb = 1; jsb = 0;
+                isb_dma = 1; jsb_dma = 1;
                 // // load    b1
+                // // compute (1,0)
                 if (IS_DM_CORE) {
                     if (storeC)
                         snrt_dma_load_2d_tile_to_tile(C, l1->C,
@@ -208,13 +209,13 @@ void SNBLAS_GEMM_TILING(streambuffer, FLOAT_T, IS_DM_CORE, BETA_NZ) (const Snbla
                                                         tileInfo.ldc, ldc, FP64);
 
                     snrt_dma_load_2d_tile_to_tile(l1->B, (void*) B,
-                                                info.tb ? 2*jb+jsb : kb+ksb, 
-                                                info.tb ? kb+ksb : 2*jb+jsb, 
-                                                tileInfo.tb ? jsb : ksb,
-                                                tileInfo.tb ? ksb : jsb, 
+                                                info.tb ? 2*jb+jsb_dma : kb+ksb, 
+                                                info.tb ? kb+ksb : 2*jb+jsb_dma, 
+                                                tileInfo.tb ? jsb_dma : ksb,
+                                                tileInfo.tb ? ksb : jsb_dma, 
                                                 info.tb ? tileInfo.N : tileInfo.K,  
                                                 info.tb ? tileInfo.K : tileInfo.N, 
-                                                tileInfo.ldb, ldb, FP64);
+                                                tileInfo.ldb, ldb, FP64);                                                
                     snrt_dma_wait_all();
                     snrt_cluster_hw_barrier();
                     if (impl.bench) snrt_mcycle();
@@ -231,9 +232,9 @@ void SNBLAS_GEMM_TILING(streambuffer, FLOAT_T, IS_DM_CORE, BETA_NZ) (const Snbla
                     SNBLAS_GEMM_CLUSTER_KERNEL_COMPUTE(FLOAT_T)(tileInfo, tileArgs, impl);
                 }
 
-                jsb = 0;
-                // // compute (1,0)
+                isb = 1; jsb = 1;
                 // // load    a1
+                // // compute (1,1)
                 if (IS_DM_CORE) {
                     if (storeC)
                         snrt_dma_load_2d_tile_to_tile(C, l1->C,
@@ -249,10 +250,10 @@ void SNBLAS_GEMM_TILING(streambuffer, FLOAT_T, IS_DM_CORE, BETA_NZ) (const Snbla
                                                         tileInfo.ldc, ldc, FP64);
 
                     snrt_dma_load_2d_tile_to_tile(l1->A, (void*) A,
-                                                info.ta ? kb+ksb : 2*ib+isb, 
-                                                info.ta ? 2*ib+isb : kb+ksb, 
-                                                tileInfo.tb ? ksb : isb, 
-                                                tileInfo.tb ? isb : ksb, 
+                                                info.ta ? kb+ksb : 2*ib+isb_dma, 
+                                                info.ta ? 2*ib+isb_dma : kb+ksb, 
+                                                tileInfo.tb ? ksb : isb_dma, 
+                                                tileInfo.tb ? isb_dma : ksb, 
                                                 info.ta ? tileInfo.K : tileInfo.M, 
                                                 info.ta ? tileInfo.M : tileInfo.K, 
                                                 tileInfo.lda, lda, FP64);

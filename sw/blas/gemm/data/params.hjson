@@ -7,9 +7,9 @@
 {
     gemmInfo: {
         prec: 64,
-        M: 16,
-        N: 16,
-        K: 8,
+        M: 32,
+        N: 32,
+        K: 32,
         ta: false, // false = row-major, true = col-major
         tb: false,
         tc: false, // not implemented
