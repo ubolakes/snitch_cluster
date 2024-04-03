@@ -73,9 +73,9 @@ void SNBLAS_GEMM_TILING(streambuffer, FLOAT_T, IS_DM_CORE, BETA_NZ) (const Snbla
     tileInfo.ta  = info.ta ^ TA_TILE;
     tileInfo.tb  = info.tb ^ TB_TILE;
     tileInfo.tc  = info.tc ^ TC_TILE; // TODO: implement transposed blocking
-    tileInfo.lda = tileInfo.ta ? L1_M : L1_K;
-    tileInfo.ldb = tileInfo.tb ? L1_K : L1_N;
-    tileInfo.ldc = tileInfo.tc ? L1_M : L1_N;
+    tileInfo.lda = tileInfo.ta ? L1_M / 2 : L1_K;
+    tileInfo.ldb = tileInfo.tb ? L1_K     : L1_N;
+    tileInfo.ldc = tileInfo.tc ? L1_M / 2 : L1_N;
 
     // create function ptr for dma loading
     const snrt_dma_load_2d_tile_t load_tile_A = TA_TILE ? &snrt_dma_load_2d_tile_transpose : &snrt_dma_load_2d_tile;
@@ -222,7 +222,7 @@ void SNBLAS_GEMM_TILING(streambuffer, FLOAT_T, IS_DM_CORE, BETA_NZ) (const Snbla
                 } else {
 
                     GemmArgs tileArgs = {0};
-                    tileArgs.A     = l1->A + isb * tileInfo.M * tileInfo.lda + ksb * tileInfo.K;
+                    tileArgs.A     = l1->A + isb * tileInfo.M * (tileInfo.ta ? L1_K : tileInfo.lda) + ksb * tileInfo.K;
                     tileArgs.B     = l1->B + ksb * tileInfo.K * tileInfo.ldb + jsb * tileInfo.N;
                     tileArgs.C     = l1->C + isb * tileInfo.M * tileInfo.ldc + jsb * tileInfo.N;
                     tileArgs.alpha = alpha;
@@ -263,7 +263,7 @@ void SNBLAS_GEMM_TILING(streambuffer, FLOAT_T, IS_DM_CORE, BETA_NZ) (const Snbla
                     if (impl.bench) snrt_mcycle();
                 } else {
                     GemmArgs tileArgs = {0};
-                    tileArgs.A     = l1->A + isb * tileInfo.M * tileInfo.lda + ksb * tileInfo.K;
+                    tileArgs.A     = l1->A + isb * tileInfo.M * (tileInfo.ta ? L1_K : tileInfo.lda) + ksb * tileInfo.K;
                     tileArgs.B     = l1->B + ksb * tileInfo.K * tileInfo.ldb + jsb * tileInfo.N;
                     tileArgs.C     = l1->C + isb * tileInfo.M * tileInfo.ldc + jsb * tileInfo.N;
                     tileArgs.alpha = alpha;
