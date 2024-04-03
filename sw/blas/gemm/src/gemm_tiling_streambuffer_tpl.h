@@ -233,7 +233,7 @@ void SNBLAS_GEMM_TILING(streambuffer, FLOAT_T, IS_DM_CORE, BETA_NZ) (const Snbla
                 }
 
                 isb = 1; jsb = 1;
-                // // load    a1
+                // // load    1
                 // // compute (1,1)
                 if (IS_DM_CORE) {
                     if (storeC)
@@ -325,7 +325,6 @@ void SNBLAS_GEMM_TILING(streambuffer, FLOAT_T, IS_DM_CORE, BETA_NZ) (const Snbla
     } else {
         snrt_fpu_fence();
         SNBLAS_GEMM_CLUSTER_KERNEL_DEINIT(FLOAT_T)(tileInfo, impl);
-        snrt_cluster_hw_barrier();
         snrt_cluster_hw_barrier();
         snrt_cluster_hw_barrier();
         snrt_cluster_hw_barrier();
