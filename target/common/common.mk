@@ -231,7 +231,7 @@ clean-visual-trace:
 	rm -f $(VISUAL_TRACE)
 
 $(addprefix $(LOGS_DIR)/,trace_hart_%.txt hart_%_perf.json): $(LOGS_DIR)/trace_hart_%.dasm $(GENTRACE_PY)
-	$(DASM) < $< | $(PYTHON) $(GENTRACE_PY) --permissive -d $(LOGS_DIR)/hart_$*_perf.json > $(LOGS_DIR)/trace_hart_$*.txt
+	$(DASM) < $< | $(PYTHON) $(GENTRACE_PY) --permissive --dma-trace $(SIM_DIR)/dma_trace_$*.log --dump-hart-perf $(LOGS_DIR)/hart_$*_perf.json --dump-dma-perf $(LOGS_DIR)/dma_$*_perf.json -o $(LOGS_DIR)/trace_hart_$*.txt
 
 # Generate source-code interleaved traces for all harts. Reads the binary from
 # the logs/.rtlbinary file that is written at start of simulation in the vsim script
