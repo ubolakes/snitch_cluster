@@ -4,13 +4,14 @@
 //
 // Author: Luca Colagrande <colluca@iis.ee.ethz.ch>
 
+#pragma once
 #include <stdint.h>
 
-#include "data.h"
-#include "kmeans.h"
-
-int main() {
-    kmeans_args_t args = {n_samples, n_features, n_clusters, n_iter, (uint64_t)samples, (uint64_t)centroids};
-    kmeans_job(&args);
-    return 0;
-}
+typedef struct {
+    uint32_t n_samples;
+    uint32_t n_features;
+    uint32_t n_clusters;
+    uint32_t n_iter;
+    uint64_t samples_addr;
+    uint64_t centroids_addr;
+} kmeans_args_t;

@@ -1,7 +1,7 @@
 <%
     nr_clusters = cfg['nr_s1_quadrant']*cfg['s1_quadrant']['nr_clusters']
     base_hartid = cfg['cluster']['cluster_base_hartid']
-    nr_iter = 2
+    nr_iter = 1
 %>
 [
 % for i in range(0, nr_clusters):
@@ -13,9 +13,12 @@
 % for iter in range(nr_iter):
 <%
     if j == 0:
-        roi_per_iter = 7
+        if i == 0:
+            roi_per_iter = 10
+        else:
+            roi_per_iter = 8
     else:
-        roi_per_iter = 5
+        roi_per_iter = 6
 %>
             {"idx": ${3 + iter * roi_per_iter}, "label": "setup"},
             {"idx": ${4 + iter * roi_per_iter}, "label": "assignment"},
@@ -25,28 +28,37 @@
 % if j == 0:
             {"idx": ${8 + iter * roi_per_iter}, "label": "reduction"},
             {"idx": ${9 + iter * roi_per_iter}, "label": "barrier"},
+% if i == 0:
+            {"idx": ${10 + iter * roi_per_iter}, "label": "reduction"},
+            {"idx": ${11 + iter * roi_per_iter}, "label": "normalize"},
+            {"idx": ${12 + iter * roi_per_iter}, "label": "barrier"},
+% else:
+            {"idx": ${10 + iter * roi_per_iter}, "label": "barrier"},
+% endif
+% else:
+            {"idx": ${8 + iter * roi_per_iter}, "label": "barrier"},
 % endif
 % endfor
         ]
     },
 % endfor
 % if i == 0:
-{
-    "thread": "${f'dma_{base_hartid + 9*i + 8}'}",
-    "roi": [
-        {"idx": -3, "label": "samples"},
-        {"idx": -2, "label": "centroids in"},
-        {"idx": -1, "label": "centroids out"},
-    ]
-},
+    {
+        "thread": "${f'dma_{base_hartid + 9*i + 8}'}",
+        "roi": [
+            {"idx": -3, "label": "samples"},
+            {"idx": -2, "label": "centroids in"},
+            {"idx": -1, "label": "centroids out"},
+        ]
+    },
 % else:
-{
-    "thread": "${f'dma_{base_hartid + 9*i + 8}'}",
-    "roi": [
-        {"idx": -2, "label": "samples"},
-        {"idx": -1, "label": "centroids in"},
-    ]
-},
+    {
+        "thread": "${f'dma_{base_hartid + 9*i + 8}'}",
+        "roi": [
+            {"idx": -2, "label": "samples"},
+            {"idx": -1, "label": "centroids in"},
+        ]
+    },
 % endif
 % endfor
 ]

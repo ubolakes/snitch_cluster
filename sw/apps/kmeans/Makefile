@@ -9,7 +9,7 @@ MK_DIR   := $(dir $(realpath $(lastword $(MAKEFILE_LIST))))
 DATA_DIR := $(realpath $(MK_DIR)/data)
 SRC_DIR  := $(realpath $(MK_DIR)/src)
 
-DATA_CFG ?= $(DATA_DIR)/params.json
+KMEANS_DATA_CFG ?= $(DATA_DIR)/params.json
 SECTION  ?=
 
 APP     ?= kmeans
@@ -19,8 +19,8 @@ INCDIRS ?= $(DATA_DIR) $(SRC_DIR)
 DATAGEN_PY = $(MK_DIR)/scripts/datagen.py
 DATA_H     = $(DATA_DIR)/data.h
 
-$(DATA_H): $(DATAGEN_PY) $(DATA_CFG)
-	$< -c $(DATA_CFG) --no-gui --section="$(SECTION)" > $@
+$(DATA_H): $(DATAGEN_PY) $(KMEANS_DATA_CFG)
+	$< -c $(KMEANS_DATA_CFG) --no-gui --section="$(SECTION)" > $@
 
 .PHONY: clean-data clean
 
