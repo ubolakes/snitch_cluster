@@ -6,10 +6,11 @@
 //         Luca Colagrande <colluca@iis.ee.ethz.ch>
 
 #include <stdint.h>
+#include "args.h"
 #include "snrt.h"
 
-void kernel_atax(uint32_t M, uint32_t N, double *A, double *x, double *y,
-                 double *tmp) {
+void atax(uint32_t M, uint32_t N, double *A, double *x, double *y,
+          double *tmp) {
     double tmp_fs;
     int core_range, core_offset;
 
@@ -25,6 +26,7 @@ void kernel_atax(uint32_t M, uint32_t N, double *A, double *x, double *y,
             }
             tmp[i] = tmp_fs;
         }
+        snrt_fpu_fence();
     }
 
     snrt_cluster_hw_barrier();
@@ -44,5 +46,67 @@ void kernel_atax(uint32_t M, uint32_t N, double *A, double *x, double *y,
             }
             y[j] = tmp_fs;
         }
+        snrt_fpu_fence();
     }
+}
+
+void atax_job(void *args) {
+    double *local_A;
+    double *local_x;
+    double *local_y;
+    double *local_tmp;
+    atax_args_t *local_args;
+
+#ifndef JOB_ARGS_PRELOADED
+    // Allocate space for job arguments in TCDM
+    local_args = (atax_args_t *)snrt_l1_alloc_cluster_local(sizeof(atax_args_t), sizeof(double));
+
+    // Copy job arguments to TCDM
+    if (snrt_is_dm_core()) {
+        snrt_dma_start_1d(local_args, args, sizeof(atax_args_t));
+        snrt_dma_wait_all();
+    }
+    snrt_cluster_hw_barrier();
+#else
+    local_args = (atax_args_t *)args;
+#endif
+
+    // Aliases
+    uint32_t M = local_args->M;
+    uint32_t N = local_args->N;
+    double *A = (double *)(local_args->A_addr);
+    double *x = (double *)(local_args->x_addr);
+    double *y = (double *)(local_args->y_addr);
+
+    // Allocate local variables
+    size_t size_A = M * N * sizeof(double);
+    size_t size_x = N * sizeof(double);
+    size_t size_y = N * sizeof(double);
+    size_t size_tmp = M * sizeof(double);
+    local_A = snrt_l1_alloc_cluster_local(size_A, sizeof(double));
+    local_x = snrt_l1_alloc_cluster_local(size_x, sizeof(double));
+    local_y = snrt_l1_alloc_cluster_local(size_y, sizeof(double));
+    local_tmp = snrt_l1_alloc_cluster_local(size_tmp, sizeof(double));
+
+    // Initialize input matrices
+    if (snrt_is_dm_core()) {
+        void *zero_mem = (void *)snrt_zero_memory_ptr();
+        snrt_dma_start_1d(local_A, A, size_A);
+        snrt_dma_start_1d(local_x, x, size_x);
+        snrt_dma_start_1d(local_y, zero_mem, size_y);
+        snrt_dma_start_1d(local_tmp, zero_mem, size_tmp);
+        snrt_dma_wait_all();
+    }
+    snrt_cluster_hw_barrier();
+
+    // Compute
+    atax(M, N, local_A, local_x, local_y, local_tmp);
+    snrt_cluster_hw_barrier();
+
+    // Writeback results
+    if (snrt_is_dm_core()) {
+        snrt_dma_start_1d(y, local_y, sizeof(double) * N);
+        snrt_dma_wait_all();
+    }
+    snrt_cluster_hw_barrier();
 }
