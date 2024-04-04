@@ -264,12 +264,12 @@ class DataGen:
 
     def main(self):
         """Default main function for data generation scripts."""
-        args = self.parse_args()
+        self.args = self.parse_args()
 
         # Load param config file
-        with args.cfg.open() as f:
+        with self.args.cfg.open() as f:
             param = json5.loads(f.read())
-        param['section'] = args.section
+        param['section'] = self.args.section
 
         # Emit header file
         print(self.emit_header(**param))
