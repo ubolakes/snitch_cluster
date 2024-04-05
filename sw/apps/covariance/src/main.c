@@ -12,38 +12,16 @@
 
 int main() {
     uint32_t nerr = 0;
-    double *local_mean;
-    double *local_cov;
-    double *local_data;
-    double diff;
 
-    local_data = snrt_l1_next();
-    local_cov = local_data + N * M;
-
-    // Initialize input matrix
-    if (snrt_is_dm_core()) {
-        snrt_dma_start_1d(local_data, data, sizeof(double) * N * M);
-        snrt_dma_wait_all();
-    }
-    snrt_cluster_hw_barrier();
-
-    // Perform Computations
-    kernel_covariance(N, M, local_data, local_cov);
-    snrt_cluster_hw_barrier();
-
-    // Writeback outputs
-    if (snrt_is_dm_core()) {
-        snrt_dma_start_1d(cov, local_cov, sizeof(double) * M * M);
-        snrt_dma_wait_all();
-    }
-    snrt_cluster_hw_barrier();
+    covariance_args_t args = {N, M, (uint64_t)data, (uint64_t)cov};
+    covariance_job(&args);
 
 #ifdef BIST
     // Check computation is correct
     if (snrt_cluster_core_idx() == 0) {
         for (int i = 0; i < M; i++) {
             for (int j = 0; j < M; j++) {
-                diff = fabs(golden[i * M + j] - local_cov[i * M + j]);
+                double diff = fabs(golden[i * M + j] - cov[i * M + j]);
                 if (diff > MAX_ERROR) {
                     nerr++;
                 }

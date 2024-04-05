@@ -39,8 +39,10 @@ class CovarianceDataGen(DataGen):
 
         header += [format_scalar_definition('uint32_t', 'M', M)]
         header += [format_scalar_definition('uint32_t', 'N', N)]
-        header += [format_array_definition('double', 'data', data, alignment=BURST_ALIGNMENT)]
-        header += [format_array_declaration('double', 'cov', cov.shape, alignment=BURST_ALIGNMENT)]
+        header += [format_array_definition('double', 'data', data, alignment=BURST_ALIGNMENT,
+                   section=kwargs['section'])]
+        header += [format_array_declaration('double', 'cov', cov.shape, alignment=BURST_ALIGNMENT,
+                   section=kwargs['section'])]
         result_def = format_array_definition('double', 'golden', cov, alignment=BURST_ALIGNMENT)
         header += [format_ifdef_wrapper('BIST', result_def)]
         header = '\n\n'.join(header)

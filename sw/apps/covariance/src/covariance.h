@@ -6,9 +6,10 @@
 //         Luca Colagrande <colluca@iis.ee.ethz.ch>
 
 #include <stdint.h>
+#include "args.h"
 #include "snrt.h"
 
-void kernel_covariance(uint32_t N, uint32_t M, double *data, double *cov) {
+void covariance(uint32_t N, uint32_t M, double *data, double *cov) {
     int i1, i, j, k;
     int core_range, core_offset;
 
@@ -50,5 +51,57 @@ void kernel_covariance(uint32_t N, uint32_t M, double *data, double *cov) {
                 cov[j * M + i] = cov[i * M + j];
             }
         }
+        snrt_fpu_fence();
     }
+}
+
+void covariance_job(void *args) {
+    double *local_data;
+    double *local_cov;
+    covariance_args_t *local_args;
+
+#ifndef JOB_ARGS_PRELOADED
+    // Allocate space for job arguments in TCDM
+    local_args = (covariance_args_t *)snrt_l1_alloc_cluster_local(
+        sizeof(covariance_args_t), sizeof(double));
+
+    // Copy job arguments to TCDM
+    if (snrt_is_dm_core()) {
+        snrt_dma_start_1d(local_args, args, sizeof(covariance_args_t));
+        snrt_dma_wait_all();
+    }
+    snrt_cluster_hw_barrier();
+#else
+    local_args = (covariance_args_t *)args;
+#endif
+
+    // Aliases
+    uint32_t M = local_args->M;
+    uint32_t N = local_args->N;
+    double *data = (double *)(local_args->data_addr);
+    double *cov = (double *)(local_args->cov_addr);
+
+    // Allocate local variables
+    size_t size_data = N * M * sizeof(double);
+    size_t size_cov = M * M * sizeof(double);
+    local_data = snrt_l1_alloc_cluster_local(size_data, sizeof(double));
+    local_cov = snrt_l1_alloc_cluster_local(size_cov, sizeof(double));
+
+    // Initialize input matrix
+    if (snrt_is_dm_core()) {
+        snrt_dma_start_1d(local_data, data, size_data);
+        snrt_dma_wait_all();
+    }
+    snrt_cluster_hw_barrier();
+
+    // Perform Computations
+    covariance(N, M, local_data, local_cov);
+    snrt_cluster_hw_barrier();
+
+    // Writeback outputs
+    if (snrt_is_dm_core()) {
+        snrt_dma_start_1d(cov, local_cov, size_cov);
+        snrt_dma_wait_all();
+    }
+    snrt_cluster_hw_barrier();
 }
