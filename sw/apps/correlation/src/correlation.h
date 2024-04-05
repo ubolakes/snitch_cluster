@@ -7,10 +7,11 @@
 
 #include <math.h>
 #include <stdint.h>
+#include "args.h"
 #include "snrt.h"
 
-void kernel_correlation(uint32_t N, uint32_t M, double *data, double *stddev,
-                        double *corr) {
+void correlation(uint32_t N, uint32_t M, double *data, double *stddev,
+                 double *corr) {
     int i1, i, j, k;
     int core_range, core_offset;
 
@@ -41,6 +42,7 @@ void kernel_correlation(uint32_t N, uint32_t M, double *data, double *stddev,
                 data[k * M + i] -= mean;
             }
         }
+        snrt_fpu_fence();
     }
 
     snrt_cluster_hw_barrier();
@@ -58,5 +60,60 @@ void kernel_correlation(uint32_t N, uint32_t M, double *data, double *stddev,
                 corr[j * M + i] = corr[i * M + j];
             }
         }
+        snrt_fpu_fence();
     }
+}
+
+void correlation_job(void *args) {
+    double *local_data;
+    double *local_stddev;
+    double *local_corr;
+    correlation_args_t *local_args;
+
+#ifndef JOB_ARGS_PRELOADED
+    // Allocate space for job arguments in TCDM
+    local_args = (correlation_args_t *)snrt_l1_alloc_cluster_local(
+        sizeof(correlation_args_t), sizeof(double));
+
+    // Copy job arguments to TCDM
+    if (snrt_is_dm_core()) {
+        snrt_dma_start_1d(local_args, args, sizeof(correlation_args_t));
+        snrt_dma_wait_all();
+    }
+    snrt_cluster_hw_barrier();
+#else
+    local_args = (correlation_args_t *)args;
+#endif
+
+    // Aliases
+    uint32_t M = local_args->M;
+    uint32_t N = local_args->N;
+    double *data = (double *)(local_args->data_addr);
+    double *corr = (double *)(local_args->corr_addr);
+
+    // Allocate local variables
+    size_t size_data = N * M * sizeof(double);
+    size_t size_corr = M * M * sizeof(double);
+    size_t size_stddev = M * sizeof(double);
+    local_data = snrt_l1_alloc_cluster_local(size_data, sizeof(double));
+    local_corr = snrt_l1_alloc_cluster_local(size_corr, sizeof(double));
+    local_stddev = snrt_l1_alloc_cluster_local(size_stddev, sizeof(double));
+
+    // Initialize input matrix
+    if (snrt_is_dm_core()) {
+        snrt_dma_start_1d(local_data, data, size_data);
+        snrt_dma_wait_all();
+    }
+    snrt_cluster_hw_barrier();
+
+    // Perform Computations
+    correlation(N, M, local_data, local_stddev, local_corr);
+    snrt_cluster_hw_barrier();
+
+    // Writeback outputs
+    if (snrt_is_dm_core()) {
+        snrt_dma_start_1d(corr, local_corr, size_corr);
+        snrt_dma_wait_all();
+    }
+    snrt_cluster_hw_barrier();
 }
