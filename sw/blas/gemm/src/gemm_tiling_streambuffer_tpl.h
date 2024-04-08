@@ -25,7 +25,7 @@ void SNBLAS_GEMM_TILING(streambuffer, FLOAT_T, IS_DM_CORE, BETA_NZ) (const Snbla
     typedef SnblasGemmInfo GemmInfo;
     typedef SNBLAS_GEMM_ARGS(FLOAT_T) GemmArgs;
 
-    if (impl.bench) snrt_mcycle();
+    // if (impl.bench) snrt_mcycle();
 
     const uint32_t M   = info.M;
     const uint32_t N   = info.N;
@@ -89,7 +89,7 @@ void SNBLAS_GEMM_TILING(streambuffer, FLOAT_T, IS_DM_CORE, BETA_NZ) (const Snbla
         SNBLAS_GEMM_CLUSTER_KERNEL_INIT(FLOAT_T)(tileInfo, impl);
         snrt_cluster_hw_barrier();
     }
-    if (impl.bench) snrt_mcycle();
+    // if (impl.bench) snrt_mcycle();
 
     for(ib = pi; ib <  M / L1_M; ib += PI) {
         for(jb = pj; jb < N / L1_N; jb += PJ) {

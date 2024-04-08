@@ -35,7 +35,7 @@ void SNBLAS_GEMM_TILING(2dpipe, FLOAT_T, IS_DM_CORE, BETA_NZ) (const SnblasGemmI
     typedef SnblasGemmInfo GemmInfo;
     typedef SNBLAS_GEMM_ARGS(FLOAT_T) GemmArgs;
 
-    if (impl.bench) snrt_mcycle();
+    // if (impl.bench) snrt_mcycle();
 
     const uint32_t M   = info.M;
     const uint32_t N   = info.N;
@@ -67,7 +67,8 @@ void SNBLAS_GEMM_TILING(2dpipe, FLOAT_T, IS_DM_CORE, BETA_NZ) (const SnblasGemmI
     bool l1Id_C = false;
 
     // Initialize indices
-    const uint32_t PI = 2, PJ = 2;
+    const uint32_t PI = 2, PJ = 2; // 1Q4C
+    // const uint32_t PI = 1, PJ = 1; // 1Q1C
     const uint32_t pi = p[1] / PJ;
     const uint32_t pj = p[1] % PJ;
 
@@ -122,16 +123,16 @@ void SNBLAS_GEMM_TILING(2dpipe, FLOAT_T, IS_DM_CORE, BETA_NZ) (const SnblasGemmI
                                                 : &load_zero_tile;
     const snrt_dma_load_2d_tile_t store_tile_C = TC_TILE ? &snrt_dma_store_2d_tile_transpose : &snrt_dma_store_2d_tile;
 
-    if (impl.bench) snrt_mcycle();
+    // if (impl.bench) snrt_mcycle();
 
     if (!IS_DM_CORE) {
         SNBLAS_GEMM_CLUSTER_KERNEL_INIT(FLOAT_T)(tileInfo, impl);
-        SNRT_BARRIER(impl.bench) // DMA core is one index ahead
+        // SNRT_BARRIER(false) // DMA core is one index ahead
     }
 
     // Wait for pipeline to be filled
     for (int pipeline = pk; pipeline > 0; --pipeline) {
-        SNRT_BARRIER(impl.bench)
+        SNRT_BARRIER(false)
     }
 
     FOR_EACH(ib, pi, M / L1_M, PI, ib_dir) {
@@ -209,7 +210,7 @@ void SNBLAS_GEMM_TILING(2dpipe, FLOAT_T, IS_DM_CORE, BETA_NZ) (const SnblasGemmI
     }
 
     if (IS_DM_CORE) { // DMA core is one index ahead
-        SNRT_BARRIER(impl.bench) 
+        SNRT_BARRIER(false) 
 
         // store final tile
         // if (ib_prev >= 0 && jb_prev >= 0) {
@@ -219,12 +220,12 @@ void SNBLAS_GEMM_TILING(2dpipe, FLOAT_T, IS_DM_CORE, BETA_NZ) (const SnblasGemmI
     } else {
         snrt_fpu_fence();
         SNBLAS_GEMM_CLUSTER_KERNEL_DEINIT(FLOAT_T)(tileInfo, impl);
-        snrt_cluster_hw_barrier();
+        SNRT_BARRIER(false)
     }
 
     // Wait for pipeline to be emptied
     for (int pipeline = pk; pipeline < PK - 1; ++pipeline) {
-        SNRT_BARRIER(impl.bench)
+        SNRT_BARRIER(false)
     }
-    SNRT_BARRIER(impl.bench)
+    SNRT_BARRIER(false)
 }

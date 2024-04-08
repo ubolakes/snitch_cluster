@@ -53,17 +53,17 @@ int main() {
     gemmImpl.tc_tile = TC_TILE;
 
     for (volatile int i = iters; i > 0; --i) {
-        // if (i == 1) snrt_mcycle(); // start
+        if (i == 1) snrt_mcycle(); // start
         gemmImpl.bench = i == 1;
         SNBLAS_GEMM(USE_METHOD, DTYPE)(gemmInfo, gemmArgs, gemmImpl);
         // dma_tile2tile_test(gemmInfo, gemmArgs, gemmImpl);
         // dma_xfer_test(c, M*N, i == 1);
+        if (i == 1) snrt_mcycle(); // end
 
         if (snrt_global_core_idx() == 0)
             dump_bench_iter(-i);
         snrt_fpu_fence();
         snrt_global_barrier();
-        if (i == 1) snrt_mcycle(); // end
     }
 
 #ifdef BIST_COMPUTE

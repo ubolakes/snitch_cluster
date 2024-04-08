@@ -25,7 +25,7 @@ void SNBLAS_GEMM_TILING(baseline, FLOAT_T, IS_DM_CORE, BETA_NZ) (const SnblasGem
     typedef SnblasGemmInfo GemmInfo;
     typedef SNBLAS_GEMM_ARGS(FLOAT_T) GemmArgs;
 
-    if (impl.bench) snrt_mcycle();
+    // if (impl.bench) snrt_mcycle();
 
     const uint32_t M   = info.M;
     const uint32_t N   = info.N;
@@ -57,7 +57,8 @@ void SNBLAS_GEMM_TILING(baseline, FLOAT_T, IS_DM_CORE, BETA_NZ) (const SnblasGem
     bool l1Id_C = false;
 
     // Initialize indices
-    const uint32_t PI = 1, PJ = 1;
+    const uint32_t PI = 2, PJ = 2; // 1Q4C
+    // const uint32_t PI = 1, PJ = 1; // 1Q1C
     const uint32_t pi = p[1] / PJ;
     const uint32_t pj = p[1] % PJ;
 
@@ -87,7 +88,7 @@ void SNBLAS_GEMM_TILING(baseline, FLOAT_T, IS_DM_CORE, BETA_NZ) (const SnblasGem
 
     if (!IS_DM_CORE) {
         SNBLAS_GEMM_CLUSTER_KERNEL_INIT(FLOAT_T)(tileInfo, impl);
-        if (impl.bench) snrt_mcycle();
+        // if (impl.bench) snrt_mcycle();
     }
 
     for(ib = pi; ib <  M / L1_M; ib += PI) {
@@ -164,5 +165,6 @@ void SNBLAS_GEMM_TILING(baseline, FLOAT_T, IS_DM_CORE, BETA_NZ) (const SnblasGem
         SNBLAS_GEMM_CLUSTER_KERNEL_DEINIT(FLOAT_T)(tileInfo, impl);
         snrt_cluster_hw_barrier();
     }
+    if (impl.bench) snrt_mcycle();
     snrt_global_barrier();
 }

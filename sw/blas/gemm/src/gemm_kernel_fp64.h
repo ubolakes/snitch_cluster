@@ -66,6 +66,16 @@ inline __attribute__((always_inline)) void snblas_gemm_cluster_kernel_deinit_fp6
     snrt_ssr_disable();
 }
 
+#if USE_C2C_TILES
+#define SNRT_BARRIER_KERNEL(with_mcycle) \
+snrt_global_barrier(); \
+if (with_mcycle) snrt_mcycle(); 
+#else
+#define SNRT_BARRIER_KERNEL(with_mcycle) \
+snrt_cluster_hw_barrier(); \
+if (with_mcycle) snrt_mcycle(); 
+#endif
+
 extern void snblas_gemm_cluster_kernel_compute_fp64(const SnblasGemmInfo info, const SnblasGemmArgs_fp64 args, const SnblasGemmImpl impl);
 inline __attribute__((always_inline)) __attribute__((flatten)) void snblas_gemm_cluster_kernel_compute_fp64(const SnblasGemmInfo info, const SnblasGemmArgs_fp64 args, const SnblasGemmImpl impl) {
     uint32_t p[3], P[3];
@@ -93,9 +103,10 @@ inline __attribute__((always_inline)) __attribute__((flatten)) void snblas_gemm_
     const uint32_t unroll = FMADD_D_UNROLL;
     
     snrt_fpu_fence(); // wait for previous fpu instructions to finish
-    snrt_cluster_hw_barrier(); 
+    // snrt_cluster_hw_barrier(); 
     // snrt_global_barrier();
-    if (impl.bench) snrt_mcycle();
+    // if (impl.bench) snrt_mcycle();
+    SNRT_BARRIER_KERNEL(impl.bench)
 
     // SSR start address need to be configured each time
     // note: will start buffering elements into the fifo immediately, must be valid already
