@@ -33,10 +33,12 @@ void atax(uint32_t M, uint32_t N, double *A, double *x, double *y,
 
     // y = At * tmp
     if (snrt_is_compute_core()) {
-        core_range = N / snrt_cluster_compute_core_num();
-        core_offset = snrt_cluster_core_idx() * core_range;
+        core_range = N / snrt_global_compute_core_num();
+        core_offset = snrt_global_compute_core_idx() * core_range;
+        cluster_core_offset = snrt_cluster_core_idx() * core_range;
         for (int j1 = 0; j1 < core_range; j1++) {
             int j = core_offset + j1;
+            int cluster_j = cluster_core_offset + j1;
             tmp_fs = 0.0;
             for (int i = 0; i < M; i++) {
                 // The order of the for loops was exchanged, so that each loop
@@ -44,7 +46,7 @@ void atax(uint32_t M, uint32_t N, double *A, double *x, double *y,
                 // positions.
                 tmp_fs += A[i * N + j] * tmp[i];
             }
-            y[j] = tmp_fs;
+            y[cluster_j] = tmp_fs;
         }
         snrt_fpu_fence();
     }
@@ -83,9 +85,10 @@ void atax_job(void *args) {
     size_t size_x = N * sizeof(double);
     size_t size_y = N * sizeof(double);
     size_t size_tmp = M * sizeof(double);
+    size_t size_y_tile = size_y / snrt_cluster_num();
     local_A = snrt_l1_alloc_cluster_local(size_A, sizeof(double));
     local_x = snrt_l1_alloc_cluster_local(size_x, sizeof(double));
-    local_y = snrt_l1_alloc_cluster_local(size_y, sizeof(double));
+    local_y = snrt_l1_alloc_cluster_local(size_y_tile, sizeof(double));
     local_tmp = snrt_l1_alloc_cluster_local(size_tmp, sizeof(double));
 
     // Initialize input matrices
@@ -93,7 +96,7 @@ void atax_job(void *args) {
         void *zero_mem = (void *)snrt_zero_memory_ptr();
         snrt_dma_start_1d(local_A, A, size_A);
         snrt_dma_start_1d(local_x, x, size_x);
-        snrt_dma_start_1d(local_y, zero_mem, size_y);
+        snrt_dma_start_1d(local_y, zero_mem, size_y_tile);
         snrt_dma_start_1d(local_tmp, zero_mem, size_tmp);
         snrt_dma_wait_all();
     }
@@ -105,7 +108,7 @@ void atax_job(void *args) {
 
     // Writeback results
     if (snrt_is_dm_core()) {
-        snrt_dma_start_1d(y, local_y, sizeof(double) * N);
+        snrt_dma_store_1d_tile(y, local_y, snrt_cluster_idx(), N / snrt_cluster_num(), sizeof(double));
         snrt_dma_wait_all();
     }
     snrt_cluster_hw_barrier();
