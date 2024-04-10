@@ -22,12 +22,16 @@ clean: clean-sw clean-work clean-vlt clean-vcs clean-logs clean-bender clean-gen
 # Common #
 ##########
 
+# Files and directories
 MKFILE_PATH := $(abspath $(lastword $(MAKEFILE_LIST)))
 MKFILE_DIR  := $(dir $(MKFILE_PATH))
 ROOT        := ${MKFILE_DIR}../..
 SNITCH_ROOT := $(ROOT)
+CFG_DIR      = $(MKFILE_DIR)/cfg
 
+# Other variables needed before Makefile inclusion
 TARGET = snitch_cluster
+DEFAULT_CFG = $(CFG_DIR)/default.hjson
 
 include $(ROOT)/target/common/common.mk
 
@@ -48,14 +52,6 @@ GENERATED_DIR     ?= $(MKFILE_DIR)generated
 
 # Verilated and compiled snitch cluster
 VLT_AR = ${VLT_BUILDDIR}/Vtestharness__ALL.a
-
-# If the configuration file is overriden on the command-line (through
-# CFG_OVERRIDE) and this file differs from the least recently used
-# (LRU) config, all targets depending on the configuration file have
-# to be rebuilt. This file is used to express this condition as a
-# prerequisite for other rules.
-DEFAULT_CFG = cfg/default.hjson
-CFG         = cfg/lru.hjson
 
 #####################
 # Simulator options #
@@ -111,35 +107,6 @@ VLT_COBJ += $(VLT_BUILDDIR)/generated/bootdata.o
 #################
 
 CLUSTER_GEN_PREREQ = ${CLUSTER_GEN} ${CLUSTER_GEN_SRC}
-
-# This target is always evaluated and creates a symlink to the least
-# recently used config file. Because it is a symlink, targets to which it is a
-# prerequisite will only be updated if the symlink target is newer than the
-# depending targets, regardless of the symlink timestamp itself. The symlink
-# timestamp can be taken into account by using the `make -L` flag on the
-# command-line, however for simplicity we touch the symlink targets so it can
-# be used without.
-$(CFG): FORCE
-	@# If the LRU config file doesn't exist, we use the default config.
-	@if [ ! -e "$@" ] ; then \
-		echo "Using default config file: $(DEFAULT_CFG) $@"; \
-		ln -s --relative $(DEFAULT_CFG) $@; \
-		touch $(DEFAULT_CFG); \
-	fi
-	@# If a config file is provided on the command-line and the LRU
-	@# config file doesn't point to it already, then we make it point to it
-	@if [ $(CFG_OVERRIDE) ] ; then \
-		echo "Overriding config file with: $(CFG_OVERRIDE)"; \
-		target=$$(readlink -f $@); \
-		if [ "$$target" = "$(abspath $(CFG_OVERRIDE))" ] ; then \
-			echo "LRU config file already points to $(CFG_OVERRIDE). Nothing to be done."; \
-		else \
-			rm -f $@; \
-			ln -s --relative $(CFG_OVERRIDE) $@; \
-			touch $(CFG_OVERRIDE); \
-		fi \
-	fi
-FORCE:
 
 test/bootrom.elf test/bootrom.dump test/bootrom.bin: test/bootrom.S test/bootrom.ld
 	riscv64-unknown-elf-gcc -mabi=ilp32d -march=rv32imafd -static -nostartfiles -Ttest/bootrom.ld $< -o test/bootrom.elf

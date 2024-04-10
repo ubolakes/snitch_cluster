@@ -161,6 +161,46 @@ $(VLT_BUILDDIR)/lib/libfesvr.a: $(VLT_FESVR)/${FESVR_VERSION}_unzip
 	mkdir -p $(dir $@)
 	cp $(dir $<)libfesvr.a $@
 
+#####################
+# RTL configuration #
+#####################
+
+# If the configuration file is overriden on the command-line (through
+# CFG_OVERRIDE) and this file differs from the least recently used
+# (LRU) config, all targets depending on the configuration file have
+# to be rebuilt. This file is used to express this condition as a
+# prerequisite for other rules.
+CFG = $(abspath $(CFG_DIR)/lru.hjson)
+
+# This target is always evaluated and creates a symlink to the least
+# recently used config file. Because it is a symlink, targets to which it is a
+# prerequisite will only be updated if the symlink target is newer than the
+# depending targets, regardless of the symlink timestamp itself. The symlink
+# timestamp can be taken into account by using the `make -L` flag on the
+# command-line, however for simplicity we touch the symlink targets so it can
+# be used without.
+$(CFG): FORCE
+	@# If the LRU config file doesn't exist, we use the default config.
+	@if [ ! -e "$@" ] ; then \
+		echo "Using default config file: $(DEFAULT_CFG)"; \
+		ln -s --relative $(DEFAULT_CFG) $@; \
+		touch $(DEFAULT_CFG); \
+	fi
+	@# If a config file is provided on the command-line and the LRU
+	@# config file doesn't point to it already, then we make it point to it
+	@if [ $(CFG_OVERRIDE) ] ; then \
+		echo "Overriding config file with: $(CFG_OVERRIDE)"; \
+		target=$$(readlink -f $@); \
+		if [ "$$target" = "$(abspath $(CFG_OVERRIDE))" ] ; then \
+			echo "LRU config file already points to $(CFG_OVERRIDE). Nothing to be done."; \
+		else \
+			rm -f $@; \
+			ln -s --relative $(CFG_OVERRIDE) $@; \
+			touch $(CFG_OVERRIDE); \
+		fi \
+	fi
+FORCE:
+
 #############
 # Verilator #
 #############
@@ -246,7 +286,7 @@ $(LOGS_DIR)/trace_hart_%.diff: $(LOGS_DIR)/trace_hart_%.txt ${ANNOTATE_PY}
 $(JOINT_PERF_DUMP): $(PERF_DUMPS) $(JOIN_PY)
 	$(PYTHON) $(JOIN_PY) -i $(shell ls $(LOGS_DIR)/*_perf.json) -o $@
 
-$(ROI_DUMP): $(JOINT_PERF_DUMP) $(ROI_SPEC) $(ROI_PY)
+$(ROI_DUMP): $(JOINT_PERF_DUMP) $(ROI_SPEC) $(ROI_PY) $(CFG)
 	$(PYTHON) $(ROI_PY) $(JOINT_PERF_DUMP) $(ROI_SPEC) --cfg $(CFG) -o $@
 
 $(VISUAL_TRACE): $(ROI_DUMP) $(VISUALIZE_PY)
