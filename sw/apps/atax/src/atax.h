@@ -12,7 +12,7 @@
 void atax(uint32_t M, uint32_t N, double *A, double *x, double *y,
           double *tmp) {
     double tmp_fs;
-    int core_range, core_offset;
+    int core_range, core_offset, cluster_core_offset;
 
     // tmp = A * x
     if (snrt_is_compute_core()) {
