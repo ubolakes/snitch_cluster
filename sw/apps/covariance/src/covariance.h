@@ -17,6 +17,8 @@ static inline void covariance_step1(uint32_t N, uint32_t M, double *data) {
     // Compute deviations
     if (snrt_is_compute_core()) {
 
+        snrt_mcycle();
+
         // Distribute different attributes to the different cores
         core_range = M / snrt_cluster_compute_core_num();
         core_offset = snrt_cluster_core_idx() * core_range;
@@ -37,6 +39,8 @@ static inline void covariance_step1(uint32_t N, uint32_t M, double *data) {
             }
         }
         snrt_fpu_fence();
+
+        snrt_mcycle();
     }
 }
 
@@ -48,6 +52,8 @@ static inline void covariance_step2(uint32_t N, uint32_t M, double *data,
 
     // Compute covariance
     if (snrt_is_compute_core()) {
+
+        snrt_mcycle();
 
         // Distribute different attributes to the different cores
         core_range = M / snrt_cluster_compute_core_num();
@@ -65,6 +71,8 @@ static inline void covariance_step2(uint32_t N, uint32_t M, double *data,
             }
         }
         snrt_fpu_fence();
+
+        snrt_mcycle();
     }
 }
 
@@ -117,6 +125,7 @@ void covariance_job(void *args) {
         );
         snrt_dma_wait_all();
     }
+    snrt_mcycle();
     snrt_cluster_hw_barrier();
 
     // Perform step 1 of the covariance
@@ -128,6 +137,9 @@ void covariance_job(void *args) {
 
         // Aggregate data in cluster 0
         if (snrt_is_dm_core() ) {
+
+            snrt_mcycle();
+
             // Theoretically speaking, moving the data in cluster 0's TCDM
             // is not required. However we need to reshape it because
             // `covariance_step1` is currently implemented in a way such
@@ -147,18 +159,24 @@ void covariance_job(void *args) {
                 );
             }
             snrt_dma_wait_all();
+
+            snrt_mcycle();
         }
         snrt_cluster_hw_barrier();
 
         // Perform step 2 of the covariance
         covariance_step2(N, M, local_data, local_cov);
         snrt_cluster_hw_barrier();
+        snrt_mcycle();
 
         // Cluster 0 writes back output matrix
         if (snrt_is_dm_core()) {
             snrt_dma_start_1d(cov, local_cov, size_cov);
             snrt_dma_wait_all();
+            snrt_mcycle();
         }
         snrt_cluster_hw_barrier();
+    } else {
+        snrt_mcycle();
     }
 }

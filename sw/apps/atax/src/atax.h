@@ -9,13 +9,14 @@
 #include "args.h"
 #include "snrt.h"
 
-void atax(uint32_t M, uint32_t N, double *A, double *x, double *y,
-          double *tmp) {
+static inline void atax(uint32_t M, uint32_t N, double *A, double *x,
+                        double *y, double *tmp) {
     double tmp_fs;
     int core_range, core_offset, cluster_core_offset;
 
     // tmp = A * x
     if (snrt_is_compute_core()) {
+        snrt_mcycle();
         core_range = M / snrt_cluster_compute_core_num();
         core_offset = snrt_cluster_core_idx() * core_range;
         for (int i1 = 0; i1 < core_range; i1++) {
@@ -27,12 +28,14 @@ void atax(uint32_t M, uint32_t N, double *A, double *x, double *y,
             tmp[i] = tmp_fs;
         }
         snrt_fpu_fence();
+        snrt_mcycle();
     }
 
     snrt_cluster_hw_barrier();
 
     // y = At * tmp
     if (snrt_is_compute_core()) {
+        snrt_mcycle();
         core_range = N / snrt_global_compute_core_num();
         core_offset = snrt_global_compute_core_idx() * core_range;
         cluster_core_offset = snrt_cluster_core_idx() * core_range;
@@ -49,6 +52,7 @@ void atax(uint32_t M, uint32_t N, double *A, double *x, double *y,
             y[cluster_j] = tmp_fs;
         }
         snrt_fpu_fence();
+        snrt_mcycle();
     }
 }
 
@@ -100,16 +104,19 @@ void atax_job(void *args) {
         snrt_dma_start_1d(local_tmp, zero_mem, size_tmp);
         snrt_dma_wait_all();
     }
+    snrt_mcycle();
     snrt_cluster_hw_barrier();
 
     // Compute
     atax(M, N, local_A, local_x, local_y, local_tmp);
     snrt_cluster_hw_barrier();
+    snrt_mcycle();
 
     // Writeback results
     if (snrt_is_dm_core()) {
         snrt_dma_store_1d_tile(y, local_y, snrt_cluster_idx(), N / snrt_cluster_num(), sizeof(double));
         snrt_dma_wait_all();
+        snrt_mcycle();
     }
     snrt_cluster_hw_barrier();
 }

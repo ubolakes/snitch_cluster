@@ -19,6 +19,8 @@ static inline void correlation_step1(uint32_t N, uint32_t M, double *data,
     // Compute deviations
     if (snrt_is_compute_core()) {
 
+        snrt_mcycle();
+
         // Distribute different attributes to the different cores
         core_range = M / snrt_cluster_compute_core_num();
         core_offset = snrt_cluster_core_idx() * core_range;
@@ -46,6 +48,8 @@ static inline void correlation_step1(uint32_t N, uint32_t M, double *data,
             }
         }
         snrt_fpu_fence();
+
+        snrt_mcycle();
     }
 }
 
@@ -57,6 +61,8 @@ static inline void correlation_step2(uint32_t N, uint32_t M, double *data,
 
     // Compute correlation
     if (snrt_is_compute_core()) {
+
+        snrt_mcycle();
 
         // Distribute different attributes to the different cores
         core_range = M / snrt_cluster_compute_core_num();
@@ -74,6 +80,8 @@ static inline void correlation_step2(uint32_t N, uint32_t M, double *data,
             }
         }
         snrt_fpu_fence();
+
+        snrt_mcycle();
     }
 }
 
@@ -129,6 +137,7 @@ void correlation_job(void *args) {
         );
         snrt_dma_wait_all();
     }
+    snrt_mcycle();
     snrt_cluster_hw_barrier();
 
     // Perform step 1 of the correlation
@@ -140,6 +149,9 @@ void correlation_job(void *args) {
 
         // Aggregate data in cluster 0
         if (snrt_is_dm_core() ) {
+        
+            snrt_mcycle();
+        
             // Theoretically speaking, moving the data in cluster 0's TCDM
             // is not required. However we need to reshape it because
             // `correlation_step1` is currently implemented in a way such
@@ -167,18 +179,24 @@ void correlation_job(void *args) {
                 );
             }
             snrt_dma_wait_all();
+
+            snrt_mcycle();
         }
         snrt_cluster_hw_barrier();
 
         // Perform step 2 of the correlation
         correlation_step2(N, M, local_data, local_stddev, local_corr);
         snrt_cluster_hw_barrier();
+        snrt_mcycle();
 
         // Cluster 0 writes back output matrix
         if (snrt_is_dm_core()) {
             snrt_dma_start_1d(corr, local_corr, size_corr);
             snrt_dma_wait_all();
+            snrt_mcycle();
         }
         snrt_cluster_hw_barrier();
+    } else {
+        snrt_mcycle();
     }
 }
