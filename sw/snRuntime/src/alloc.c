@@ -7,8 +7,8 @@ snrt_allocator_t l3_allocator;
 extern void *snrt_l1_next();
 extern void *snrt_l3_next();
 
-extern void *snrt_l1alloc(size_t size);
-extern void *snrt_l3alloc(size_t size);
+extern void *snrt_l1_alloc(size_t size);
+extern void *snrt_l3_alloc(size_t size);
 
 extern void snrt_l1_update_next(void *next);
 
