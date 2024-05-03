@@ -11,7 +11,7 @@
 #include "pi_estimation.h"
 #include "snrt.h"
 
-#define N_SAMPLES 1024
+#define n_samples 1024
 
 __thread uint32_t seed0, seed1, Ap, Cp;
 
@@ -32,7 +32,7 @@ int main() {
     uint32_t* reduction_array = (uint32_t*)snrt_l1_next();
 
     // Calculate partial sums
-    uint32_t n_samples_per_core = N_SAMPLES / snrt_cluster_compute_core_num();
+    uint32_t n_samples_per_core = n_samples / snrt_cluster_compute_core_num();
     reduction_array[snrt_cluster_core_idx()] =
         calculate_partial_sum(seed0, seed1, Ap, Cp, n_samples_per_core);
 
@@ -48,7 +48,7 @@ int main() {
         }
 
         // Estimate pi
-        pi_estimate = estimate_pi(sum, N_SAMPLES);
+        pi_estimate = estimate_pi(sum, n_samples);
 
         // Check result
         double err = fabs(pi_estimate - M_PI);
