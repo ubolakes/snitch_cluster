@@ -52,8 +52,15 @@ class KmeansDataGen(DataGen):
         plt.ylabel("Feature 2")
         plt.show()
 
+    def validate_config(self, **kwargs):
+        assert (kwargs['n_samples'] % 8) == 0, 'Number of samples must be a multiple of the' \
+                                               ' number of cores'
+
     def emit_header(self, **kwargs):
         header = [super().emit_header()]
+
+        # Validate parameters
+        self.validate_config(**kwargs)
 
         # Aliases
         n_samples = kwargs['n_samples']

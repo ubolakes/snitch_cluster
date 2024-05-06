@@ -16,11 +16,6 @@ from sklearn.cluster import KMeans
 import sys
 
 
-sys.path.append(os.path.join(os.path.dirname(__file__), "../../../../util/sim/"))
-from data_utils import emit_license, format_scalar_definition, \
-                       format_vector_definition, format_ifdef_wrapper  # noqa: E402
-
-
 def test(**kwargs):
 
     n_samples = kwargs['n_samples']

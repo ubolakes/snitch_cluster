@@ -71,6 +71,8 @@ static inline void kmeans_iteration(uint32_t n_samples_per_core, uint32_t n_clus
                 centroid_idx++) {
             for (uint32_t feature_idx = 0; feature_idx < n_features;
                     feature_idx++) {
+                // Initialize centroids to zero
+                // TODO: Can be optimized w/ DMA
                 partial_centroids[centroid_idx * n_features + feature_idx] =
                     0;
             }
@@ -100,10 +102,18 @@ static inline void kmeans_iteration(uint32_t n_samples_per_core, uint32_t n_clus
             for (uint32_t core_idx = 1;
                     core_idx < snrt_cluster_compute_core_num(); core_idx++) {
                 // Pointers to variables of the other core
-                uint32_t* remote_partial_membership_cnt =
-                    partial_membership_cnt + core_idx * n_clusters;
+                uint32_t* remote_partial_membership_cnt = 
+                    snrt_compute_core_local_ptr(
+                        partial_membership_cnt,
+                        core_idx,
+                        n_clusters * sizeof(uint32_t)
+                    );
                 double* remote_partial_centroids =
-                    partial_centroids + core_idx * n_clusters * n_features;
+                    snrt_compute_core_local_ptr(
+                        partial_centroids,
+                        core_idx,
+                        n_clusters * n_features * sizeof(double)
+                    );
                 for (uint32_t centroid_idx = 0; centroid_idx < n_clusters;
                         centroid_idx++) {
                     // Accumulate membership counters
@@ -202,10 +212,14 @@ void kmeans_job(kmeans_args_t* args) {
     uint32_t* partial_membership_cnt = snrt_l1_alloc_compute_core_local(
         n_clusters * sizeof(uint32_t), sizeof(uint32_t));
     // First core's partial centroids will store final centroids
-    double *final_centroids = (double *)ALIGN_UP((uint32_t)snrt_l1_next(), sizeof(double));
-    final_centroids = snrt_remote_l1_ptr(final_centroids, snrt_cluster_idx(), 0);
     double* partial_centroids = snrt_l1_alloc_compute_core_local(
         n_clusters * n_features * sizeof(double), sizeof(double));
+    double *final_centroids = snrt_compute_core_local_ptr(
+        partial_centroids,
+        0,
+        n_clusters * n_features * sizeof(double)
+    );
+    final_centroids = snrt_remote_l1_ptr(final_centroids, snrt_cluster_idx(), 0);
 
     snrt_mcycle();
 
@@ -227,7 +241,9 @@ void kmeans_job(kmeans_args_t* args) {
 
     // Iterations of Lloyd's K-means algorithm
     for (uint32_t iter_idx = 0; iter_idx < n_iter; iter_idx++) {
-        kmeans_iteration(n_samples_per_core, n_clusters, n_features, local_samples, membership, partial_membership_cnt, local_centroids, partial_centroids);
+        kmeans_iteration(n_samples_per_core, n_clusters, n_features,
+            local_samples, membership, partial_membership_cnt, local_centroids,
+            partial_centroids);
         snrt_global_barrier();
         local_centroids = final_centroids;
         snrt_mcycle();
