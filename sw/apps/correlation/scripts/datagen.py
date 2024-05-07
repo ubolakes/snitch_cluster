@@ -11,6 +11,7 @@ import os
 import sys
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "../../../../util/sim/"))
+import data_utils  # noqa: E402
 from data_utils import format_scalar_definition, format_array_definition, \
                        format_array_declaration, format_ifdef_wrapper, DataGen  # noqa: E402
 
@@ -25,8 +26,23 @@ class CorrelationDataGen(DataGen):
     def golden_model(self, data):
         return np.corrcoef(data, rowvar=False)
 
+    def validate_config(self, M, N, **kwargs):
+        assert (M % 8) == 0, "M must be an integer multiple of the number of cores"
+
+        # Calculate total TCDM occupation
+        data_size = N * M * 8
+        corr_size = M * M * 8
+        stddev_size = M * 8
+        total_size = data_size
+        total_size += corr_size
+        total_size += stddev_size
+        data_utils.validate_tcdm_footprint(total_size)
+
     def emit_header(self, **kwargs):
         header = [super().emit_header()]
+
+        # Validate parameters
+        self.validate_config(**kwargs)
 
         M, N = kwargs['M'], kwargs['N']
         data = np.random.random_integers(-200, 100, size=(N, M))/100
