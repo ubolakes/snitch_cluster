@@ -309,35 +309,48 @@ PRIV_LVL = {'3': 'M', '1': 'S', '0': 'U'}
 
 # -------------------- FPU helpers  --------------------
 
+_cached_opcodes = None
+
+
+def load_opcodes():
+    global _cached_opcodes
+    opcode_file_name = 'opcodes-flt-occamy_CUSTOM.csv'
+    opcode_file_path = pathlib.Path(__file__).parent.absolute() / opcode_file_name
+
+    _cached_opcodes = {}
+    with open(opcode_file_path, 'r') as f:
+        for line in f:
+            fields = line.strip().split(',')
+            insn_name = fields[0]
+            vec_params = fields[1:5]
+            _cached_opcodes[insn_name] = vec_params
+
 
 def vec_formatter(insn: str, op_type: str, hex_val: int, fmt: int) -> str:
-    # file data:
-    # instruction,source_width,source_vec_len,destination_width,destination_vec_len
-    opcodes_file_name = 'opcodes-flt-occamy_CUSTOM.csv'
-    opcodes_file_path = pathlib.Path(__file__).parent.absolute() / opcodes_file_name
+    global _cached_opcodes
+    if _cached_opcodes is None:
+        load_opcodes()
+
     # cut the insn after the first space
     insn = insn.split(' ')[0]
     # check if operand is a source or a destination
     is_rd = (op_type == 'rd')
-    # check if the insn is in the opcodes file
-    with open(opcodes_file_path, 'r') as f:
-        for line in f:
-            if insn in line:
-                vec_params = line.strip().split(',')[1:5]
-                # check if vector support for the insn is implemented
-                if vec_params != ([''] * 4):
-                    # decode vector
-                    if not is_rd:
-                        width, vec_len = map(int, vec_params[0:2])
-                    else:
-                        width, vec_len = map(int, vec_params[2:4])
-                    # divide the hex value into source_vec_len each of width source_width
-                    vec = reversed([hex_val >> (width * i) & (2**width - 1) for i in range(vec_len)])
-                    # decode the source_vec
-                    return [flt_decode(val, fmt) for val in vec]
-                else:
-                    # if vector instruction but vector formatting not supported, return hex
-                    return hex(hex_val)
+    # check if the insn is in the opcodes file else return None
+    vec_params = _cached_opcodes.get(insn, None)
+    # check if vector support for the insn is implemented
+    if vec_params != ([''] * 4) or vec_params[2] != '1' or not None:
+        # decode vector
+        if not is_rd:
+            width, vec_len = map(int, vec_params[0:2])
+        else:
+            width, vec_len = map(int, vec_params[2:4])
+        # divide the hex value into source_vec_len each of width source_width
+        vec = reversed([hex_val >> (width * i) & (2**width - 1) for i in range(vec_len)])
+        # decode the source_vec
+        return [flt_decode(val, fmt) for val in vec]
+    else:
+        # if vector instruction but vector formatting not supported, return hex
+        return hex(hex_val)
     # if not vector instruction, default to scalar behaviour
     return flt_lit(hex_val, fmt)
 
