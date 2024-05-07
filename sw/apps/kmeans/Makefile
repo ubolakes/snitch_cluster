@@ -20,7 +20,7 @@ DATAGEN_PY = $(MK_DIR)/scripts/datagen.py
 DATA_H     = $(DATA_DIR)/data.h
 
 $(DATA_H): $(DATAGEN_PY) $(KMEANS_DATA_CFG)
-	$< -c $(KMEANS_DATA_CFG) --no-gui --section="$(SECTION)" > $@
+	$< -c $(KMEANS_DATA_CFG) --no-gui --section="$(SECTION)" $@
 
 .PHONY: clean-data clean
 
