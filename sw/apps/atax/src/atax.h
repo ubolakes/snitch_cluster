@@ -119,4 +119,11 @@ void atax_job(void *args) {
         snrt_mcycle();
     }
     snrt_cluster_hw_barrier();
+
+    // Free memory
+#ifndef JOB_ARGS_PRELOADED
+    snrt_l1_update_next_v2(local_args);
+#else
+    snrt_l1_update_next_v2(local_A);
+#endif
 }

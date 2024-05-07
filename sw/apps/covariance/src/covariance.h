@@ -179,4 +179,11 @@ void covariance_job(void *args) {
     } else {
         snrt_mcycle();
     }
+
+    // Free memory
+#ifndef JOB_ARGS_PRELOADED
+    snrt_l1_update_next_v2(local_args);
+#else
+    snrt_l1_update_next_v2(local_data);
+#endif
 }
