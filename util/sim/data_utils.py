@@ -41,6 +41,16 @@ def _integer_precision_t(prec):
         return prec
 
 
+def size_from_precision_t(prec):
+    """Return the size in bytes of a `precision_t` type.
+
+    Args:
+        prec: A value of type `precision_t`. Accepts both enum strings
+            (e.g. "FP64") and integer enumeration values (e.g. 8).
+    """
+    return _integer_precision_t(prec)
+
+
 def ff_desc_from_precision_t(prec):
     """Convert `precision_t` type to a FlexFloat descriptor.
 
@@ -164,13 +174,20 @@ def format_array_initializer(dtype, array):
 def format_struct_definition(dtype, uid, map):
     def format_value(value):
         if isinstance(value, list):
-            return format_array_initializer(str, value)
+            return format_array_initializer('str', value)
         elif isinstance(value, bool):
-            return int(value)
+            return str(int(value))
         else:
             return str(value)
+
+    filtered_map = {key: value for key, value in map.items() if value is not None and value != ''}
+
+    formatted_items = [
+        f'\t.{key} = {format_value(value)}'
+        for key, value in filtered_map.items()
+    ]
     s = f'{_alias_dtype(dtype)} {uid} = {{\n'
-    s += ',\n'.join([f'\t.{key} = {format_value(value)}' for (key, value) in map.items()])
+    s += ',\n'.join(formatted_items)
     s += '\n};'
     return s
 
