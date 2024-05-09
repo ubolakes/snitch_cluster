@@ -27,7 +27,6 @@ class AtaxDataGen(DataGen):
         return np.matmul(A.transpose(), np.matmul(A, x))
 
     def validate_config(self, M, N, **kwargs):
-        assert (M % 8) == 0, "M must be an integer multiple of the number of cores"
         assert (N % 8) == 0, "N must be an integer multiple of the number of cores"
 
         # Calculate total TCDM occupation

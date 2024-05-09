@@ -17,17 +17,25 @@ static inline void atax(uint32_t M, uint32_t N, double *A, double *x,
     // tmp = A * x
     if (snrt_is_compute_core()) {
         snrt_mcycle();
-        core_range = M / snrt_cluster_compute_core_num();
-        core_offset = snrt_cluster_core_idx() * core_range;
-        for (int i1 = 0; i1 < core_range; i1++) {
-            int i = core_offset + i1;
-            tmp_fs = 0.0;
-            for (int j = 0; j < N; j++) {
-                tmp_fs += A[i * N + j] * x[j];
+
+        // Distribute input rows among cores
+        // The last core gets the remainder rows
+        uint32_t frac_m = M / snrt_cluster_compute_core_num();
+        uint32_t rem_m = M % snrt_cluster_compute_core_num();
+        uint32_t core_m = snrt_cluster_is_last_compute_core() ?
+            frac_m + rem_m : frac_m;
+        if (core_m > 0) {
+            core_offset = snrt_cluster_core_idx() * frac_m;
+            for (int i1 = 0; i1 < core_m; i1++) {
+                int i = core_offset + i1;
+                tmp_fs = 0.0;
+                for (int j = 0; j < N; j++) {
+                    tmp_fs += A[i * N + j] * x[j];
+                }
+                tmp[i] = tmp_fs;
             }
-            tmp[i] = tmp_fs;
+            snrt_fpu_fence();
         }
-        snrt_fpu_fence();
         snrt_mcycle();
     }
 
