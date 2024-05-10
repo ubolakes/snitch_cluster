@@ -8,7 +8,41 @@
 #include <stdint.h>
 #include "args.h"
 #include "snrt.h"
-#include "gemm/src/gemm.h"
+
+static inline void gemv(uint32_t M, uint32_t N, uint32_t K,
+                        double *A, double *B, double *C) {
+    // Configure SSR 0 to stream A
+    const uint32_t ssr0_b[2] = {K, M};
+    const uint32_t ssr0_i[2] = {8, K*8};
+    snrt_ssr_loop_2d(SNRT_SSR_DM0, ssr0_b[0], ssr0_b[1], ssr0_i[0], ssr0_i[1]);
+
+    // Configure SSR 1 to stream B
+    const uint32_t ssr1_b[2] = {K, M};
+    const uint32_t ssr1_i[2] = {8, 0};
+    snrt_ssr_loop_2d(SNRT_SSR_DM1, ssr1_b[0], ssr1_b[1], ssr1_i[0], ssr1_i[1]);
+
+    // SSR start address need to be configured each time
+    snrt_ssr_read(SNRT_SSR_DM0, SNRT_SSR_2D, A);
+    snrt_ssr_read(SNRT_SSR_DM1, SNRT_SSR_2D, B);
+    snrt_ssr_enable();
+
+    for (uint32_t m = 0; m < M; m++) {
+        for (uint32_t n = 0; n < N; n++) {
+            double c = 0.0;
+
+            asm volatile(
+                "frep.o %[n_frep], 1, 0, 0 \n"
+                "fmadd.d %[c], ft0, ft1, %[c] \n"
+                : [ c ] "+f"(c)
+                : [ n_frep ] "r"(K - 1)
+                : "ft0", "ft1", "ft2");
+
+            C[m] = c;
+        }
+    }
+    snrt_ssr_disable();
+    snrt_fpu_fence();
+}
 
 static inline void atax(uint32_t M, uint32_t N, double *A, double *x,
                         double *y, double *tmp) {
@@ -18,7 +52,14 @@ static inline void atax(uint32_t M, uint32_t N, double *A, double *x,
     // tmp = A * x
     if (snrt_is_compute_core()) {
         snrt_mcycle();
-        sc_st_gemm(FP64, 1, 0, 1, M, 1, N, 1, A, N, x, 1, 0, tmp, 1, gemm_fp64_opt);
+        // Distribute rows to cores in cluster
+        uint32_t frac_m = M / snrt_cluster_compute_core_num();
+        uint32_t rem_m = M % snrt_cluster_compute_core_num();
+        uint32_t start_m = snrt_cluster_core_idx() * frac_m;
+        uint32_t core_m =
+            snrt_cluster_core_idx() == (snrt_cluster_compute_core_num() - 1) ?
+            frac_m + rem_m : frac_m;
+        gemv(core_m, 1, N, &A[start_m * N], x, &tmp[start_m]);
         snrt_mcycle();
     }
 
