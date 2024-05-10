@@ -132,8 +132,6 @@ void atax_job(void *args) {
         void *zero_mem = (void *)snrt_zero_memory_ptr();
         snrt_dma_start_1d(local_A, A, size_A);
         snrt_dma_start_1d(local_x, x, size_x);
-        snrt_dma_start_1d(local_y, zero_mem, size_y_tile);
-        snrt_dma_start_1d(local_tmp, zero_mem, size_tmp);
         snrt_dma_wait_all();
     }
     snrt_mcycle();
