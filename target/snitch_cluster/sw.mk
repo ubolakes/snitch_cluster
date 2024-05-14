@@ -40,6 +40,7 @@ $(TARGET_C_HDRS_DIR)/snitch_cluster_peripheral.h: $(ROOT)/hw/snitch_cluster/src/
 
 APPS  = sw/apps/nop
 APPS += sw/apps/blas/axpy
+APPS += sw/apps/blas/gemv
 APPS += sw/apps/blas/gemm
 APPS += sw/apps/dnn/batchnorm
 APPS += sw/apps/dnn/conv2d

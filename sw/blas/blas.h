@@ -5,4 +5,5 @@
 #pragma once
 
 #include "axpy/src/axpy.h"
+#include "gemv/src/gemv.h"
 #include "gemm/src/gemm.h"
