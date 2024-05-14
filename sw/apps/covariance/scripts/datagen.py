@@ -27,13 +27,11 @@ class CovarianceDataGen(DataGen):
         return np.cov(data, rowvar=False)
 
     def validate_config(self, M, N, **kwargs):
-        assert (M % 8) == 0, "M must be an integer multiple of the number of cores"
-
         # Calculate total TCDM occupation
         data_size = N * M * 8
         cov_size = M * M * 8
         total_size = data_size
-        total_size += cov_size
+        total_size += 2 * cov_size
         data_utils.validate_tcdm_footprint(total_size)
 
     def emit_header(self, **kwargs):

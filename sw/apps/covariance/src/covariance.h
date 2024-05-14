@@ -9,76 +9,217 @@
 #include "args.h"
 #include "snrt.h"
 
-// Single-cluster computation of the first step in the covariance kernel
-static inline void covariance_step1(uint32_t N, uint32_t M, double *data) {
-    int i1, i, j, k;
-    int core_range, core_offset;
+#include "gemv/src/gemv.h"
 
-    // Compute deviations
-    if (snrt_is_compute_core()) {
+// Assumes the A and B buffers are at the same offset in the TCDM of every
+// cluster. Also assumes the last element in the two buffers can be used as a
+// status flag for synchronization. The status flag encodes whether the data
+// in the buffer is valid (0/1) and what iteration (level) it belongs to as:
+// status = level * 2 + valid.
+// `len` is the number of elements in the buffer, without counting the
+// notification flag. At the beginning, the source data is expected to be
+// in the A buffer, which is also where the output will be.
+static inline void global_reduction(volatile double *a_buffer, volatile double *b_buffer,
+                             size_t len) {
+    // If we have a single cluster there is no reduction to perform
+    if (snrt_cluster_num() > 1) {
+        // Iterate levels in the binary reduction tree
+        int num_levels = ceil(log2(snrt_cluster_num()));
+        for (unsigned int level = 0; level < num_levels; level++) {
+            // Determine whether the current cluster is an active cluster.
+            // An active cluster is a cluster that participates in the current
+            // level of the reduction tree. Every second cluster among the
+            // active ones is a sender.
+            uint32_t is_active = (snrt_cluster_idx() % (1 << level)) == 0;
+            uint32_t is_sender = (snrt_cluster_idx() % (1 << (level + 1))) != 0;
 
-        snrt_mcycle();
-
-        // Distribute different attributes to the different cores
-        core_range = M / snrt_cluster_compute_core_num();
-        core_offset = snrt_cluster_core_idx() * core_range;
-
-        for (i1 = 0; i1 < core_range; i1++) {
-            i = core_offset + i1;
-
-            // Calculate mean vector
-            double mean = 0.0;
-            for (k = 0; k < N; k++) {
-                mean += data[k * M + i];
+            // If the cluster is a sender, it must wait for the receiver to be
+            // done processing the data in the B buffer from the
+            // previous level. It then updates the status flag in the A buffer
+            // to mark the data arriving in the destination's B buffer as
+            // valid.
+            // If the cluster is a receiver, it polls the status flag
+            // to check if the data is valid, i.e. if it fully arrived.
+            if (snrt_is_dm_core()) snrt_mcycle();
+            if (is_active && snrt_is_dm_core()) {
+                if (is_sender) {
+                    volatile double *b_buffer_dst = (volatile double *)
+                        ((void *)b_buffer - (1 << level) * SNRT_CLUSTER_OFFSET);
+                    while (b_buffer_dst[len] != (level * 2)) ;
+                    a_buffer[len] = level * 2 + 1;
+                    snrt_dma_start_1d(
+                        (void *)b_buffer_dst,
+                        (void *)a_buffer,
+                        (len + 1) * sizeof(double)
+                    );
+                    snrt_dma_wait_all();
+                } else {
+                    while (b_buffer[len] == (level * 2)) ;
+                }
             }
-            mean = mean / N;
+            if (snrt_is_dm_core()) snrt_mcycle();
 
-            // Standardize data to zero mean
-            for (k = 0; k < N; k++) {
-                data[k * M + i] -= mean;
+            // Synchronize DM and compute cores
+            snrt_cluster_hw_barrier();
+
+            // Every cluster which is not a sender performs the reduction
+            if (snrt_is_compute_core()) snrt_mcycle();
+            if (is_active && !is_sender) {
+                // Computation is parallelized over the compute cores (strided)
+                if (snrt_is_compute_core()) {
+                    uint32_t items_per_core =
+                        len / snrt_cluster_compute_core_num();
+                    uint32_t remainder_items =
+                        len % snrt_cluster_compute_core_num();
+                    uint32_t core_offset = snrt_cluster_core_idx();
+                    if (snrt_cluster_core_idx() < remainder_items)
+                        items_per_core++;
+                    for (uint32_t i = 0; i < items_per_core; i++) {
+                        uint32_t abs_i = core_offset + i * snrt_cluster_compute_core_num();
+                        a_buffer[abs_i] += b_buffer[abs_i];
+                    }
+                    // Core 0 updates the status flag, to indicate that the
+                    // buffer's contents can be overriden with the data for
+                    // the next iteration.
+                    if (snrt_cluster_core_idx() == 0) b_buffer[len] += 1;
+                    snrt_fpu_fence();
+                }
             }
+            if (snrt_is_compute_core()) snrt_mcycle();
+
+            // Synchronize compute and DM cores for next tree level
+            snrt_cluster_hw_barrier();
         }
-        snrt_fpu_fence();
+    }
+}
 
+// A^t*A product given a matrix A of size MxN
+static inline void ata_fp64_opt(uint32_t m, uint32_t n, double* A, double *C) {
+    // Derive GEMM parameters
+    uint32_t M = n;
+    uint32_t N = n;
+    uint32_t K = m;
+    uint32_t ldA = N;
+    uint32_t ldC = N;
+
+    // Configure SSRs to stream a
+    const uint32_t ssr0_b[3] = {K, N, M};
+    const uint32_t ssr0_i[3] = {8 * ldA, 0, 8};
+    snrt_ssr_loop_3d(SNRT_SSR_DM0, ssr0_b[0], ssr0_b[1], ssr0_b[2],
+                     ssr0_i[0], ssr0_i[1], ssr0_i[2]);
+    const uint32_t ssr1_b[3] = {K, N, M};
+    const uint32_t ssr1_i[3] = {8 * ldA, 8, 0};
+    snrt_ssr_loop_3d(SNRT_SSR_DM1, ssr1_b[0], ssr1_b[1], ssr1_b[2],
+                     ssr1_i[0], ssr1_i[1], ssr1_i[2]);
+    snrt_ssr_read(SNRT_SSR_DM0, SNRT_SSR_3D, A);
+    snrt_ssr_read(SNRT_SSR_DM1, SNRT_SSR_3D, A);
+    snrt_ssr_enable();
+
+    for (uint32_t m = 0; m < M; m++) {
+        for (uint32_t n = 0; n < N; n++) {
+            double c = 0.0;
+            asm volatile(
+                "frep.o %[n_frep], 1, 0, 0 \n"
+                "fmadd.d %[c], ft0, ft1, %[c] \n"
+                : [ c ] "+f"(c)
+                : [ n_frep ] "r"(K - 1)
+                : "ft0", "ft1", "ft2", "memory");
+
+            // Store results back
+            C[m * ldC + n] = c;
+        }
+    }
+    snrt_ssr_disable();
+    snrt_fpu_fence();
+}
+
+// Subtract a vector x [1, n] from a matrix A [m, n].
+// The x vector is broadcasted across all rows of A.
+static inline void apx(uint32_t m, uint32_t n, double* a, double *x) {
+
+    // Configure SSR 0 to read a
+    snrt_ssr_loop_2d(SNRT_SSR_DM0, m, n, n * 8, 8);
+
+    // Configure SSR 1 to read x
+    snrt_ssr_loop_2d(SNRT_SSR_DM1, m, n, 0, 8);
+
+    // Configure SSR 2 to write a
+    snrt_ssr_loop_2d(SNRT_SSR_DM2, m, n, n * 8, 8);
+
+    snrt_ssr_read(SNRT_SSR_DM0, SNRT_SSR_2D, a);
+    snrt_ssr_read(SNRT_SSR_DM1, SNRT_SSR_1D, x);
+    snrt_ssr_write(SNRT_SSR_DM2, SNRT_SSR_2D, a);
+    snrt_ssr_enable();
+
+    asm volatile(
+        "frep.o %[n_frep], 1, 0, 0 \n"
+        "fadd.d ft2, ft0, ft1 \n"
+        :
+        : [ n_frep ] "r"(n * m - 1)
+        : "ft0", "ft1", "ft2", "memory");
+
+    snrt_ssr_disable();
+    snrt_fpu_fence();
+}
+
+// Single-cluster computation of the first step in the covariance kernel
+static inline __attribute__((always_inline)) void covariance_step1(uint32_t N, uint32_t M, double *data, double *mean) {
+
+    // Compute mean vector
+    if (snrt_is_compute_core()) {
+        snrt_mcycle();
+        double one = 1;
+        double alpha = -1.0 / N;
+        gemv(1, M, N, alpha, data, &one, 0, mean);
+        snrt_mcycle();
+    }
+
+    snrt_cluster_hw_barrier();
+
+    // Normalize the data
+    if (snrt_is_compute_core()) {
+        snrt_mcycle();
+        if (snrt_cluster_core_idx() == 0) {
+            apx(N, M, data, mean);
+        }
         snrt_mcycle();
     }
 }
 
 // Single-cluster computation of the second step in the covariance kernel
-static inline void covariance_step2(uint32_t N, uint32_t M, double *data,
-                                     double *cov) {
-    int i1, i, j, k;
-    int core_range, core_offset;
-
-    // Compute covariance
+static inline __attribute__((always_inline)) void covariance_step2(uint32_t N, uint32_t M, double *data,
+                                    double *cov_a, double *cov_b) {
+    // Every cluster computes the matrix product between a
+    // [M, N_frac] tile of data^T and data.
     if (snrt_is_compute_core()) {
-
         snrt_mcycle();
-
-        // Distribute different attributes to the different cores
-        core_range = M / snrt_cluster_compute_core_num();
-        core_offset = snrt_cluster_core_idx() * core_range;
-
-        for (i1 = 0; i1 < core_range; i1++) {
-            i = core_offset + i1;
-            for (j = 0; j <= i; j++) {
-                double tmp = 0.0;
-                for (k = 0; k < N; k++) {
-                    tmp += data[k * M + i] * data[k * M + j];
-                }
-                cov[i * M + j] = tmp / (N - 1);
-                cov[j * M + i] = cov[i * M + j];
-            }
+        if (snrt_cluster_core_idx() == 0) {
+            uint32_t N_frac = N / snrt_cluster_num();
+            uint32_t N_offset = N_frac * snrt_cluster_idx();
+            ata_fp64_opt(N_frac, M, &data[N_offset * M], cov_a);
         }
-        snrt_fpu_fence();
+        snrt_mcycle();
+    }
+    snrt_cluster_hw_barrier();
 
+    // Sum the partial results from the various clusters
+    global_reduction((double*)cov_a, (double*)cov_b, M * M);
+
+    // Normalize results
+    if (snrt_is_compute_core()) {
+        snrt_mcycle();
+        if (snrt_cluster_core_idx() == 0 && snrt_cluster_idx() == 0) {
+            for (int i = 0; i < M; i++)
+                for (int j = 0; j < M; j++)
+                    cov_a[i * M + j] /= N - 1;
+            snrt_fpu_fence();
+        }
         snrt_mcycle();
     }
 }
 
 void covariance_job(void *args) {
-    double *local_data;
-    double *local_cov;
+    double *local_data, *local_mean, *local_cov_a, *local_cov_b;
     covariance_args_t *local_args;
 
 #ifndef JOB_ARGS_PRELOADED
@@ -104,80 +245,40 @@ void covariance_job(void *args) {
 
     // Allocate local variables
     size_t size_data = N * M * sizeof(double);
+    size_t size_mean = M * sizeof(double);
     size_t size_cov = M * M * sizeof(double);
     local_data = snrt_l1_alloc_cluster_local(size_data, sizeof(double));
-    local_cov = snrt_l1_alloc_cluster_local(size_cov, sizeof(double));
-
-    // Parallelize step 1 across clusters, distributing the M columns
-    size_t tile_M = M / snrt_cluster_num();
+    local_mean = snrt_l1_alloc_cluster_local(size_mean, sizeof(double));
+    // Add one more element to store the notification flag in the buffers
+    // which will be used in the global reduction, and initialize it.
+    local_cov_a = snrt_l1_alloc_cluster_local(size_cov + sizeof(double), sizeof(double));
+    local_cov_b = snrt_l1_alloc_cluster_local(size_cov + sizeof(double), sizeof(double));
+    local_cov_b[M * M] = 0;
 
     // Load input matrix tile
     if (snrt_is_dm_core()) {
-        snrt_dma_load_2d_tile(
-            local_data,          // dst
-            data,                // src
-            0,                   // tile_x1_idx
-            snrt_cluster_idx(),  // tile_x0_idx
-            N,                   // tile_x1_size
-            tile_M,              // tile_x0_size
-            M,                   // full_x0_size
-            sizeof(double)       // prec
-        );
+        snrt_dma_start_1d(local_data, data, size_data);
         snrt_dma_wait_all();
     }
     snrt_mcycle();
     snrt_cluster_hw_barrier();
 
     // Perform step 1 of the covariance
-    covariance_step1(N, tile_M, local_data);
-    snrt_global_barrier();
+    covariance_step1(N, M, local_data, local_mean);
+    snrt_cluster_hw_barrier();
 
-    // The rest of the computation is done only on cluster 0
-    if (snrt_cluster_idx() == 0) {
+    // Perform step 2 of the covariance
+    covariance_step2(N, M, local_data, local_cov_a, local_cov_b);
+    snrt_cluster_hw_barrier();
+    snrt_mcycle();
 
-        // Aggregate data in cluster 0
-        if (snrt_is_dm_core() ) {
-
-            snrt_mcycle();
-
-            // Theoretically speaking, moving the data in cluster 0's TCDM
-            // is not required. However we need to reshape it because
-            // `covariance_step1` is currently implemented in a way such
-            // that it stores the output tile as contiguous data, not with
-            // the proper stride it would have in the full matrix.
-            for (unsigned int i = 0; i < snrt_cluster_num(); i++) {
-                double *remote_data = snrt_remote_l1_ptr(local_data, snrt_cluster_idx(), i);
-                snrt_dma_store_2d_tile(
-                    local_data,     // dst
-                    remote_data,    // src
-                    0,              // tile_x1_idx
-                    i,              // tile_x0_idx
-                    N,              // tile_x1_size
-                    tile_M,         // tile_x0_size
-                    M,              // full_x0_size
-                    sizeof(double)  // prec
-                );
-            }
-            snrt_dma_wait_all();
-
-            snrt_mcycle();
-        }
-        snrt_cluster_hw_barrier();
-
-        // Perform step 2 of the covariance
-        covariance_step2(N, M, local_data, local_cov);
-        snrt_cluster_hw_barrier();
-        snrt_mcycle();
-
-        // Cluster 0 writes back output matrix
-        if (snrt_is_dm_core()) {
-            snrt_dma_start_1d(cov, local_cov, size_cov);
+    // Copy data out of TCDM
+    if (snrt_is_dm_core()) {
+        if (snrt_cluster_idx() == 0) {
+            snrt_dma_start_1d(cov, local_cov_a, size_cov);
             snrt_dma_wait_all();
             snrt_mcycle();
         }
-        snrt_cluster_hw_barrier();
-    } else {
-        snrt_mcycle();
     }
 
     // Free memory
