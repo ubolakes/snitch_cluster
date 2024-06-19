@@ -22,6 +22,7 @@
 /// Snitch Cluster Top-Level.
 module snitch_cluster
   import snitch_pkg::*;
+  import trdb_pkg::*;
 #(
   /// Width of physical address.
   parameter int unsigned PhysicalAddrWidth  = 48,
@@ -790,6 +791,11 @@ module snitch_cluster
   hive_req_t [NrCores-1:0] hive_req;
   hive_rsp_t [NrCores-1:0] hive_rsp;
 
+  // signals for tracing output
+  logic [PTYPE_LEN-1:0]   packet_type;
+  logic [P_LEN-1:0]       packet_length;
+  logic [PAYLOAD_LEN-1:0] packet_payload;
+
   for (genvar i = 0; i < NrCores; i++) begin : gen_core
     localparam int unsigned TcdmPorts = get_tcdm_ports(i);
     localparam int unsigned TcdmPortsOffs = get_tcdm_port_offs(i);
@@ -891,6 +897,27 @@ module snitch_cluster
         .core_events_o (core_events[i]),
         .tcdm_addr_base_i (tcdm_start_address)
       );
+
+      // instancing a trace_encoder for core_0
+      if (i == 0) begin 
+        trace_debugger i_trace_debugger(
+          .inst_valid_i(i_snitch_cc.i_snitch.inst_valid_o),
+          .iretired_i(i_snitch_cc.i_snitch.retired_i_q),
+          .exception_i(i_snitch_cc.i_snitch.exception),
+          .interrupt_i(i_snitch_cc.i_snitch.cause_irq_q),
+          .cause_i(i_snitch_cc.i_snitch.cause_q),
+          .tvec_i(i_snitch_cc.i_snitch.tvec_q),
+          .tval_i('0),
+          .priv_lvl_i(i_snitch_cc.i_snitch.priv_lvl_q),
+          .inst_data_i(i_snitch_cc.i_snitch.inst_data_i),
+          .pc_i(i_snitch_cc.i_snitch.pc_q),
+          .epc_i(i_snitch_cc.i_snitch.epc_q),
+          .packet_type_o(packet_type),
+          .packet_length_o(packet_length),
+          .packet_payload_o(packet_payload)
+        );
+      end
+
       for (genvar j = 0; j < TcdmPorts; j++) begin : gen_tcdm_user
         always_comb begin
           tcdm_req[TcdmPortsOffs+j] = tcdm_req_wo_user[j];
