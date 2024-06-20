@@ -901,6 +901,9 @@ module snitch_cluster
       // instancing a trace_encoder for core_0
       if (i == 0) begin 
         trace_debugger i_trace_debugger(
+          .clk_i,
+          .rst_ni,
+          .test_mode_i('0),
           .inst_valid_i(i_snitch_cc.i_snitch.inst_valid_o),
           .iretired_i(i_snitch_cc.i_snitch.retired_i_q),
           .exception_i(i_snitch_cc.i_snitch.exception),
