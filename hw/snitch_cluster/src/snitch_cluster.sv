@@ -915,7 +915,7 @@ module snitch_cluster
           .priv_lvl_i(i_snitch_cc.i_snitch.priv_lvl_q),
           .inst_data_i(i_snitch_cc.i_snitch.inst_data_i),
           .pc_i(i_snitch_cc.i_snitch.pc_q),
-          .epc_i(i_snitch_cc.i_snitch.epc_q),
+          .epc_i(i_snitch_cc.i_snitch.epc_q[0]),
           .packet_type_o(packet_type),
           .packet_length_o(packet_length),
           .packet_payload_o(packet_payload)
