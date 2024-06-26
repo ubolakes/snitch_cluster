@@ -910,7 +910,7 @@ module snitch_cluster
           .exception_i(i_snitch_cc.i_snitch.exception),
           .interrupt_i(i_snitch_cc.i_snitch.cause_irq_q),
           .cause_i(i_snitch_cc.i_snitch.cause_q),
-          .tvec_i(i_snitch_cc.i_snitch.tvec_q[0]),
+          .tvec_i(i_snitch_cc.i_snitch.tvec_q),
           .tval_i('0),
           .priv_lvl_i(i_snitch_cc.i_snitch.priv_lvl_q),
           .inst_data_i(i_snitch_cc.i_snitch.inst_data_i),
