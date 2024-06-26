@@ -903,7 +903,7 @@ module snitch_cluster
 
       // instancing a trace_encoder for core_0
       if (i == 0) begin
-        case(i_snitch_cc.snitch.priv_lvl_q):
+        case(i_snitch_cc.snitch.priv_lvl_q)
         PrivLvlM: begin
           epc = i_snitch_cc.snitch.epc_q[0];
         end
