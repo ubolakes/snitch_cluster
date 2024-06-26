@@ -791,6 +791,7 @@ module snitch_cluster
   hive_req_t [NrCores-1:0] hive_req;
   hive_rsp_t [NrCores-1:0] hive_rsp;
 
+  // TODO: move to a better place
   // signals for tracing output
   logic [PTYPE_LEN-1:0]   packet_type;
   logic [P_LEN-1:0]       packet_length;
@@ -909,7 +910,7 @@ module snitch_cluster
           .exception_i(i_snitch_cc.i_snitch.exception),
           .interrupt_i(i_snitch_cc.i_snitch.cause_irq_q),
           .cause_i(i_snitch_cc.i_snitch.cause_q),
-          .tvec_i(i_snitch_cc.i_snitch.tvec_q),
+          .tvec_i(i_snitch_cc.i_snitch.tvec_q[0]),
           .tval_i('0),
           .priv_lvl_i(i_snitch_cc.i_snitch.priv_lvl_q),
           .inst_data_i(i_snitch_cc.i_snitch.inst_data_i),
