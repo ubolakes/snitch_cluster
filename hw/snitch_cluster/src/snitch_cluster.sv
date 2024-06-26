@@ -796,7 +796,9 @@ module snitch_cluster
   logic [PTYPE_LEN-1:0]   packet_type;
   logic [P_LEN-1:0]       packet_length;
   logic [PAYLOAD_LEN-1:0] packet_payload;
-
+  // signals for epc input
+  logic [XLEN-1:0]        epc;
+  
   for (genvar i = 0; i < NrCores; i++) begin : gen_core
     localparam int unsigned TcdmPorts = get_tcdm_ports(i);
     localparam int unsigned TcdmPortsOffs = get_tcdm_port_offs(i);
@@ -900,7 +902,19 @@ module snitch_cluster
       );
 
       // instancing a trace_encoder for core_0
-      if (i == 0) begin 
+      if (i == 0) begin
+        case(i_snitch_cc.snitch.priv_lvl_q):
+        PrivLvlM: begin
+          epc = i_snitch_cc.snitch.epc_q[0];
+        end
+        PrivLvlS: begin
+          epc = i_snitch_cc.i_snitch.epc_q[1];
+        end
+        default: begin
+          epc = '0;
+        end
+        endcase
+
         trace_debugger i_trace_debugger(
           .clk_i,
           .rst_ni,
@@ -915,7 +929,7 @@ module snitch_cluster
           .priv_lvl_i(i_snitch_cc.i_snitch.priv_lvl_q),
           .inst_data_i(i_snitch_cc.i_snitch.inst_data_i),
           .pc_i(i_snitch_cc.i_snitch.pc_q),
-          .epc_i(i_snitch_cc.i_snitch.epc_q[0]),
+          .epc_i(epc), // i_snitch_cc.i_snitch.epc_q[0]
           .packet_type_o(packet_type),
           .packet_length_o(packet_length),
           .packet_payload_o(packet_payload)
