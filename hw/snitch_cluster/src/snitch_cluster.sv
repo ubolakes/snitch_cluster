@@ -798,6 +798,7 @@ module snitch_cluster
   logic [PAYLOAD_LEN-1:0] packet_payload;
   logic                   fifo_full;
   logic                   hart_stall;
+  logic                   packet_valid;
   
   for (genvar i = 0; i < NrCores; i++) begin : gen_core
     localparam int unsigned TcdmPorts = get_tcdm_ports(i);
@@ -920,6 +921,7 @@ module snitch_cluster
           .pc_i(i_snitch_cc.i_snitch.pc_q),
           .epc_i(i_snitch_cc.i_snitch.epc_q[0]),
           .packets_lost_i(fifo_full),
+          .packet_valid_o(packet_valid),
           .packet_type_o(packet_type),
           .packet_length_o(packet_length),
           .packet_payload_o(packet_payload),
