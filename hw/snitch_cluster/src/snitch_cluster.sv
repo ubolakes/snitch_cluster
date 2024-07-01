@@ -796,6 +796,8 @@ module snitch_cluster
   logic [PTYPE_LEN-1:0]   packet_type;
   logic [P_LEN-1:0]       packet_length;
   logic [PAYLOAD_LEN-1:0] packet_payload;
+  logic                   fifo_full;
+  logic                   hart_stall;
   
   for (genvar i = 0; i < NrCores; i++) begin : gen_core
     localparam int unsigned TcdmPorts = get_tcdm_ports(i);
@@ -899,8 +901,9 @@ module snitch_cluster
         .tcdm_addr_base_i (tcdm_start_address)
       );
 
-      // instancing a trace_encoder for core_0
+      // for core_0
       if (i == 0) begin
+        // instancing trace encoder
         trace_debugger i_trace_debugger(
           .clk_i,
           .rst_ni,
@@ -916,9 +919,31 @@ module snitch_cluster
           .inst_data_i(i_snitch_cc.i_snitch.inst_data_i),
           .pc_i(i_snitch_cc.i_snitch.pc_q),
           .epc_i(i_snitch_cc.i_snitch.epc_q[0]),
+          .packets_lost_i(fifo_full),
           .packet_type_o(packet_type),
           .packet_length_o(packet_length),
-          .packet_payload_o(packet_payload)
+          .packet_payload_o(packet_payload),
+          .stall_o(hart_stall)
+        );
+
+        // instancing a FIFO from common_cells
+        // it simulates the behaviour of the 
+        // encapsulator internal buffer
+        fifo_v3 #(
+          .DATA_WIDTH(256),
+          .DEPTH(64) // stores up to 64 256b long elements
+        ) i_fifo_v3 (
+          .clk_i,
+          .rst_ni,
+          .flush_i('0),
+          .testmode_i('0),
+          .full_o(fifo_full),
+          .empty_o(),
+          .usage_o(),
+          .data_i(packet_payload),
+          .push_i(packet_valid),
+          .data_o(),
+          .pop_i('0)
         );
       end
 
