@@ -933,7 +933,7 @@ module snitch_cluster
         // encapsulator internal buffer
         fifo_v3 #(
           .DATA_WIDTH(256),
-          .DEPTH(64) // stores up to 64 256b long elements
+          .DEPTH(2**10) // stores up to 64 256b long elements
         ) i_fifo_v3 (
           .clk_i,
           .rst_ni,
