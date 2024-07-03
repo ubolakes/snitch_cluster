@@ -920,7 +920,7 @@ module snitch_cluster
           .inst_data_i(i_snitch_cc.i_snitch.inst_data_i),
           .pc_i(i_snitch_cc.i_snitch.pc_q),
           .epc_i(i_snitch_cc.i_snitch.epc_q[0]),
-          .encapsulator_ready(fifo_full),
+          .encapsulator_ready_i(fifo_full),
           .packet_valid_o(packet_valid),
           .packet_type_o(packet_type),
           .packet_length_o(packet_length),
