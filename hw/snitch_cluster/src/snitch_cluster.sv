@@ -911,7 +911,7 @@ module snitch_cluster
           .test_mode_i('0),
           .inst_valid_i(i_snitch_cc.i_snitch.inst_valid_o),
           .iretired_i(i_snitch_cc.i_snitch.retired_i_q),
-          .exception_i(i_snitch_cc.i_snitch.exception),
+          .exception_i('0), //i_snitch_cc.i_snitch.exception
           .interrupt_i(i_snitch_cc.i_snitch.cause_irq_q),
           .cause_i(i_snitch_cc.i_snitch.cause_q),
           .tvec_i('0), //i_snitch_cc.i_snitch.tvec_q
