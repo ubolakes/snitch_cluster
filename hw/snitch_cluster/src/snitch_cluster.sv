@@ -914,12 +914,12 @@ module snitch_cluster
           .exception_i(i_snitch_cc.i_snitch.exception),
           .interrupt_i(i_snitch_cc.i_snitch.cause_irq_q),
           .cause_i(i_snitch_cc.i_snitch.cause_q),
-          .tvec_i(i_snitch_cc.i_snitch.tvec_q),
+          .tvec_i('0), //i_snitch_cc.i_snitch.tvec_q
           .tval_i('0),
           .priv_lvl_i(i_snitch_cc.i_snitch.priv_lvl_q),
           .inst_data_i(i_snitch_cc.i_snitch.inst_data_i),
           .pc_i(i_snitch_cc.i_snitch.pc_q),
-          .epc_i(i_snitch_cc.i_snitch.epc_q[0]),
+          .epc_i('0), //i_snitch_cc.i_snitch.epc_q[0]
           .encapsulator_ready_i(fifo_full),
           .packet_valid_o(packet_valid),
           .packet_type_o(packet_type),
