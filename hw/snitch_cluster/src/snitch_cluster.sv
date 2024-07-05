@@ -913,9 +913,15 @@ module snitch_cluster
           .iretired_i(i_snitch_cc.i_snitch.retired_i_q),
           .exception_i('0), //i_snitch_cc.i_snitch.exception
           .interrupt_i(i_snitch_cc.i_snitch.cause_irq_q),
-          .cause_i(i_snitch_cc.i_snitch.cause_q),
+          .ucause_i('0),
+          .scause_i('0),
+          .vscause_i('0),
+          .mcause_i(i_snitch_cc.i_snitch.cause_q),
           .tvec_i('0), //i_snitch_cc.i_snitch.tvec_q
-          .tval_i('0),
+          .utval_i('0),
+          .stval_i('0),
+          .vstval_i('0),
+          .mtval_i('0),
           .priv_lvl_i(i_snitch_cc.i_snitch.priv_lvl_q),
           .inst_data_i(i_snitch_cc.i_snitch.inst_data_i),
           .pc_i(i_snitch_cc.i_snitch.pc_q),
