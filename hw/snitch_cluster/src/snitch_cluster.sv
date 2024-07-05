@@ -793,7 +793,7 @@ module snitch_cluster
 
   // TODO: move to a better place
   // signals for tracing output
-  logic [PTYPE_LEN-1:0]   packet_type;
+  it_packet_type          packet_type;
   logic [P_LEN-1:0]       packet_length;
   logic [PAYLOAD_LEN-1:0] packet_payload;
   logic                   fifo_full;
