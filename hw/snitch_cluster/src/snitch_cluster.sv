@@ -887,7 +887,7 @@ module snitch_cluster
         .rst_fp_ss_ni (1'b1),
         .hart_id_i (hart_base_id_i + i),
         .hive_req_o (hive_req[i]),
-        .hive_rsp_i (hive_rsp[i]),
+        .hive_rsp_i (hive_rsp[i]), // work on this to stall the core
         .irq_i (irq),
         .data_req_o (core_req[i]),
         .data_rsp_i (core_rsp[i]),
@@ -902,6 +902,10 @@ module snitch_cluster
         .tcdm_addr_base_i (tcdm_start_address)
       );
 
+      /* halting the core:
+        into hive_rsp[0] I put:
+        hive_rsp.inst_ready && hart_stall
+      */
       // for core_0
       if (i == 0) begin
         // instancing trace encoder
@@ -910,7 +914,7 @@ module snitch_cluster
           .rst_ni,
           .test_mode_i('0),
           .inst_valid_i(i_snitch_cc.i_snitch.inst_valid_o),
-          .iretired_i(i_snitch_cc.i_snitch.retired_i_q),
+          .iretired_i(i_snitch_cc.i_snitch.retired_instr_q),
           .exception_i('0), //i_snitch_cc.i_snitch.exception
           .interrupt_i(i_snitch_cc.i_snitch.cause_irq_q),
           .ucause_i('0),
