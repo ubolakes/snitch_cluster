@@ -930,6 +930,7 @@ module snitch_cluster
           .inst_data_i(i_snitch_cc.i_snitch.inst_data_i),
           .pc_i(i_snitch_cc.i_snitch.pc_q),
           .epc_i('0), //i_snitch_cc.i_snitch.epc_q[0]
+          .time_i('0), // MTIME CSR not available
           .encapsulator_ready_i(~fifo_full),
           .packet_valid_o(packet_valid),
           .packet_type_o(packet_type),
