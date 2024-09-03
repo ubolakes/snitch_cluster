@@ -26,7 +26,7 @@ dependencies:
   register_interface: { git: https://github.com/pulp-platform/register_interface, version:  0.4.2   }
   tech_cells_generic: { git: https://github.com/pulp-platform/tech_cells_generic, version:  0.2.11  }
   riscv-dbg:          { git: https://github.com/pulp-platform/riscv-dbg,          version:  0.8.0   }
-  trace_encoder:      { git: git@github.com:ubolakes/trace_encoder.git,           rev:      477337c }
+  trace_encoder:      { git: git@github.com:ubolakes/trace_encoder.git,           rev:      main    }
 
 vendor_package:
   - name: musl
