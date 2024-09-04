@@ -799,6 +799,7 @@ module snitch_cluster
   logic                   fifo_full;
   logic                   hart_stall;
   logic                   packet_valid;
+  logic                   flush_fifo;
   
   for (genvar i = 0; i < NrCores; i++) begin : gen_core
     localparam int unsigned TcdmPorts = get_tcdm_ports(i);
@@ -948,7 +949,7 @@ module snitch_cluster
         ) i_fifo_v3 (
           .clk_i,
           .rst_ni,
-          .flush_i('0),
+          .flush_i(flush_fifo),
           .testmode_i('0),
           .full_o(fifo_full),
           .empty_o(),
@@ -958,6 +959,23 @@ module snitch_cluster
           .data_o(),
           .pop_i('0)
         );
+
+        // instancing a counter from common_cells
+        // it simulates the emptying of the FIFO
+        counter #(
+          .WIDTH(14)
+        ) i_counter(
+          .clk_i,
+          .rst_ni,
+          .clear_i('0),
+          .en_i('1),
+          .load_i('0),
+          .down_i('0),
+          .d_i('0),
+          .q_o(),
+          .overflow_o(flush_fifo)
+        );
+
       end
 
       for (genvar j = 0; j < TcdmPorts; j++) begin : gen_tcdm_user
