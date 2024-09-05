@@ -800,6 +800,23 @@ module snitch_cluster
   logic                   hart_stall;
   logic                   packet_valid;
   logic                   flush_fifo;
+  logic                   clear_counter;
+  logic                   full_d, full_q;
+  logic                   clear_d, clear_q;
+
+  assign clear_counter = full_q != full_d;
+  assign full_d = fifo_full;
+  assign clear_d = clear_counter;
+
+  always_ff @(posedge clk_i, negedge rst_ni) begin
+    if(~rst_ni) begin
+      clear_q <= '0;
+      full_q <= '0;
+    end else begin
+      clear_q <= clear_d;
+      full_q <= full_d;
+    end
+  end
   
   for (genvar i = 0; i < NrCores; i++) begin : gen_core
     localparam int unsigned TcdmPorts = get_tcdm_ports(i);
@@ -967,7 +984,7 @@ module snitch_cluster
         ) i_counter(
           .clk_i,
           .rst_ni,
-          .clear_i('0),
+          .clear_i(clear_counter),
           .en_i('1),
           .load_i('0),
           .down_i('0),
