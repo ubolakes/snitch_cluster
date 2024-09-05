@@ -980,7 +980,7 @@ module snitch_cluster
         // instancing a counter from common_cells
         // it simulates the emptying of the FIFO
         counter #(
-          .WIDTH(14)
+          .WIDTH(12)
         ) i_counter(
           .clk_i,
           .rst_ni,
